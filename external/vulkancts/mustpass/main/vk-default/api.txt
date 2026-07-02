@@ -206492,6 +206492,9 @@ dEQP-VK.api.device_init.create_device_global_priority.basic
 dEQP-VK.api.device_init.create_device_global_priority_khr.basic
 dEQP-VK.api.device_init.create_device_global_priority_query.basic
 dEQP-VK.api.device_init.create_device_global_priority_query_khr.basic
+dEQP-VK.api.device_init.create_device_null_queue_priorities.basic
+dEQP-VK.api.device_init.create_device_null_queue_priorities_global_priority.basic
+dEQP-VK.api.device_init.create_device_null_queue_priorities_global_priority_khr.basic
 dEQP-VK.api.device_init.create_device_queue2.basic
 dEQP-VK.api.device_init.create_device_queue2_all_combinations.basic
 dEQP-VK.api.device_init.create_device_queue2_all_families.basic
