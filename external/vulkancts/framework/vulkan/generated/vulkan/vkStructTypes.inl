@@ -6793,6 +6793,13 @@ struct VkPhysicalDeviceMaintenance10PropertiesKHR
 	VkBool32		resolveSrgbFormatSupportsTransferFunctionControl;
 };
 
+struct VkPhysicalDeviceMaintenance12FeaturesKHR
+{
+	VkStructureType	sType;
+	void*			pNext;
+	VkBool32		maintenance12;
+};
+
 struct VkPhysicalDeviceMaintenance3Properties
 {
 	VkStructureType	sType;

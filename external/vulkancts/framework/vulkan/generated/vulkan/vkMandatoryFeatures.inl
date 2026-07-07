@@ -436,6 +436,11 @@ void checkBasicMandatoryFeatures(const vkt::Context& context, std::vector<std::s
 	if (canUseFeaturesStruct(deviceExtensions, usedApiVersion, "VK_KHR_maintenance10"))
 		addFeatures(&physicalDeviceMaintenance10FeaturesKHR);
 
+	// VkPhysicalDeviceMaintenance12FeaturesKHR for ext [VK_KHR_maintenance12]
+	vk::VkPhysicalDeviceMaintenance12FeaturesKHR physicalDeviceMaintenance12FeaturesKHR = initVulkanStructure();
+	if (canUseFeaturesStruct(deviceExtensions, usedApiVersion, "VK_KHR_maintenance12"))
+		addFeatures(&physicalDeviceMaintenance12FeaturesKHR);
+
 	// VkPhysicalDeviceMaintenance4Features, VkPhysicalDeviceMaintenance4FeaturesKHR for ext [VK_KHR_maintenance4]
 	vk::VkPhysicalDeviceMaintenance4Features physicalDeviceMaintenance4Features = initVulkanStructure();
 	if (canUseFeaturesStruct(deviceExtensions, usedApiVersion, "VK_KHR_maintenance4"))
@@ -1565,6 +1570,13 @@ void checkBasicMandatoryFeatures(const vkt::Context& context, std::vector<std::s
 	{
 		if ( physicalDeviceExtendedFlagsFeaturesKHR.extendedFlags == VK_FALSE )
 			failMesages.push_back("extendedFlags");
+	}
+
+	// VkPhysicalDeviceMaintenance12FeaturesKHR
+	if ( isExtensionStructSupported(deviceExtensions, RequiredExtension("VK_KHR_maintenance12")) )
+	{
+		if ( physicalDeviceMaintenance12FeaturesKHR.maintenance12 == VK_FALSE )
+			failMesages.push_back("maintenance12");
 	}
 
 	// VkPhysicalDeviceTransformFeedbackFeaturesEXT

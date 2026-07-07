@@ -2912,6 +2912,18 @@ bool check_VK_KHR_maintenance11(const tcu::UVec2& v, const ExtPropVect& vIEP, co
 	return (isSupported(vIEP, "VK_KHR_get_physical_device_properties2") || isCompatible(1, 1, v));
 }
 
+bool check_VK_KHR_maintenance12(const tcu::UVec2& v, const ExtPropVect& vIEP, const ExtPropVect& vDEP)
+{
+	DE_UNREF(v);
+	DE_UNREF(vIEP);
+
+	if (!isSupported(vDEP, "VK_KHR_maintenance12"))
+		return true;
+
+	// depends attribute in xml: VK_KHR_get_physical_device_properties2,VK_VERSION_1_1
+	return (isSupported(vIEP, "VK_KHR_get_physical_device_properties2") || isCompatible(1, 1, v));
+}
+
 bool check_VK_KHR_maintenance3(const tcu::UVec2& v, const ExtPropVect& vIEP, const ExtPropVect& vDEP)
 {
 	if (isCompatible(1, 1, v))
@@ -5023,6 +5035,7 @@ static const DependencyCheckVect deviceExtensionDependencies
 	std::make_pair("VK_KHR_line_rasterization",								&check_VK_KHR_line_rasterization),
 	std::make_pair("VK_KHR_maintenance10",									&check_VK_KHR_maintenance10),
 	std::make_pair("VK_KHR_maintenance11",									&check_VK_KHR_maintenance11),
+	std::make_pair("VK_KHR_maintenance12",									&check_VK_KHR_maintenance12),
 	std::make_pair("VK_KHR_maintenance3",									&check_VK_KHR_maintenance3),
 	std::make_pair("VK_KHR_maintenance4",									&check_VK_KHR_maintenance4),
 	std::make_pair("VK_KHR_maintenance5",									&check_VK_KHR_maintenance5),
@@ -5460,6 +5473,7 @@ static const std::tuple<uint32_t, uint32_t, const char*>	extensionRequiredCoreVe
 	std::make_tuple(1, 0, "VK_KHR_maintenance1"),
 	std::make_tuple(1, 0, "VK_KHR_maintenance10"),
 	std::make_tuple(1, 0, "VK_KHR_maintenance11"),
+	std::make_tuple(1, 0, "VK_KHR_maintenance12"),
 	std::make_tuple(1, 0, "VK_KHR_maintenance2"),
 	std::make_tuple(1, 0, "VK_KHR_maintenance3"),
 	std::make_tuple(1, 1, "VK_KHR_maintenance4"),
