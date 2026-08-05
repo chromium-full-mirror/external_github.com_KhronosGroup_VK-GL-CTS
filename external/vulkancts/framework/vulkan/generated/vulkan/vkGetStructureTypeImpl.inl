@@ -2573,6 +2573,11 @@ template<> VkStructureType getStructureType<VkPhysicalDeviceMaintenance12Feature
 	return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_12_FEATURES_KHR;
 }
 
+template<> VkStructureType getStructureType<VkPhysicalDeviceMaintenance12PropertiesKHR> (void)
+{
+	return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_12_PROPERTIES_KHR;
+}
+
 template<> VkStructureType getStructureType<VkPhysicalDeviceMaintenance3Properties> (void)
 {
 	return VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES;

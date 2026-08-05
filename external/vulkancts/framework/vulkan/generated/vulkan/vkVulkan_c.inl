@@ -17067,6 +17067,12 @@ typedef struct VkPhysicalDeviceMaintenance12FeaturesKHR {
     VkBool32           maintenance12;
 } VkPhysicalDeviceMaintenance12FeaturesKHR;
 
+typedef struct VkPhysicalDeviceMaintenance12PropertiesKHR {
+    VkStructureType    sType;
+    void*              pNext;
+    uint32_t           maxInputAttachmentIndex;
+} VkPhysicalDeviceMaintenance12PropertiesKHR;
+
 
 
 // VK_EXT_debug_report is a preprocessor guard. Do not pass it to API calls.

@@ -38,6 +38,8 @@ set(DEQP_VK_VKSC_RENDER_PASS_SRCS
 	vktRenderPassRemainingArrayLayersTests.hpp
 	vktRenderPassMultiviewPerViewTests.cpp
 	vktRenderPassMultiviewPerViewTests.hpp
+	vktRenderPassInputAttachmentIndicesTests.cpp
+	vktRenderPassInputAttachmentIndicesTests.hpp
 	)
 
 set(DEQP_VK_RENDER_PASS_SRCS

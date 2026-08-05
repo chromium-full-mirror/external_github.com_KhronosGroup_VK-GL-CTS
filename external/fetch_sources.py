@@ -365,7 +365,7 @@ PACKAGES = [
     GitRepo(
         "https://github.com/KhronosGroup/glslang.git",
         "git@github.com:KhronosGroup/glslang.git",
-        "20960a4872f681e4213312b06b48cc4ddae3c73d",
+        "a163b7f1e8cbba3f553c4da075a4c148d16d8e7c",
         "glslang",
         removeTags = ["main-tot", "master-tot"]),
     GitRepo(
@@ -376,7 +376,7 @@ PACKAGES = [
     GitRepo(
         "https://gitlab.khronos.org/vulkan/vulkan.git",
         "git@gitlab.khronos.org:vulkan/vulkan.git",
-        "d3c4ecf23ef86ba20e4388b98233fd8ce8abde45",
+        "a7496445183858445ad7b0009ecb61350063b534",
         "vulkan-docs"),
     GitRepo(
         "https://github.com/KhronosGroup/Vulkan-ValidationLayers.git",

@@ -550,6 +550,7 @@ cc_defaults {
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassDepthStencilWriteConditionsTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassDitheringTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassFragmentDensityMapTests.cpp",
+        "external/vulkancts/modules/vulkan/renderpass/vktRenderPassInputAttachmentIndicesTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassLoadStoreOpNoneTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassMultipleSubpassesMultipleCommandBuffersTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassMultisampleResolveTests.cpp",
