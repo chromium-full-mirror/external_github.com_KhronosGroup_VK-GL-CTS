@@ -258842,6 +258842,7 @@ dEQP-VK.api.info.format_properties.r8g8b8a8_uint
 dEQP-VK.api.info.format_properties.r8g8b8a8_unorm
 dEQP-VK.api.info.format_properties.r8g8b8a8_uscaled
 dEQP-VK.api.info.format_properties.s8_uint
+dEQP-VK.api.info.format_properties.sampled_formats
 dEQP-VK.api.info.format_properties.undefined
 dEQP-VK.api.info.format_properties.x8_d24_unorm_pack32
 dEQP-VK.api.info.get_physical_device_properties2.features.16_bit_storage_features

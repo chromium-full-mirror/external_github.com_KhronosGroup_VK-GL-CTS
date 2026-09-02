@@ -28,7 +28,6 @@
 #include "vktTestGroupUtil.hpp"
 #include "vktCustomInstancesDevices.hpp"
 
-#include "vkPlatform.hpp"
 #include "vkStrUtil.hpp"
 #include "vkRef.hpp"
 #include "vkRefUtil.hpp"
@@ -37,6 +36,7 @@
 #include "vkQueryUtil.hpp"
 #include "vkImageUtil.hpp"
 #include "vkApiVersion.hpp"
+#include "vkFormatLists.hpp"
 
 #include "tcuTestLog.hpp"
 #include "tcuFormatUtil.hpp"
@@ -45,7 +45,6 @@
 #include "tcuCommandLine.hpp"
 
 #include "deUniquePtr.hpp"
-#include "deString.h"
 #include "deStringUtil.hpp"
 #include "deSTLUtil.hpp"
 #include "deMemory.h"
@@ -1434,6 +1433,11 @@ tcu::TestStatus validateLimitsExtBlendOperationAdvanced(Context &context)
         return tcu::TestStatus::pass("pass");
     else
         return tcu::TestStatus::fail("fail");
+}
+
+void checkSupportKhrMaintenance1(Context &context)
+{
+    context.requireDeviceFunctionality("VK_KHR_maintenance1");
 }
 
 void checkSupportKhrMaintenance3(Context &context)
@@ -4796,6 +4800,61 @@ tcu::TestStatus testCompressedFormatsSupported(Context &context)
         return tcu::TestStatus::pass("Compressed texture format support is valid");
 }
 
+tcu::TestStatus testSampledFormatsRequirements(Context &context)
+{
+    auto &vki           = context.getInstanceInterface();
+    auto physicalDevice = context.getPhysicalDevice();
+
+    const auto requiredTransferFeatures = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+    uint32_t numErrors                  = 0;
+
+    const std::pair<std::string, std::vector<VkFormat>> guardedFormats[]{
+        {"VK_EXT_4444_formats", {VK_FORMAT_A4R4G4B4_UNORM_PACK16, VK_FORMAT_A4B4G4R4_UNORM_PACK16}},
+        {"VK_EXT_rgba10x6_formats", {VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16}},
+        {"VK_KHR_maintenance5", {VK_FORMAT_A1B5G5R5_UNORM_PACK16, VK_FORMAT_A8_UNORM}},
+    };
+
+    for (auto format : formats::allFormats)
+    {
+        bool isFormatSupported = true;
+
+        // check if format is guarded by an extension
+        for (const auto &[extension, formats] : guardedFormats)
+        {
+            if (std::find(formats.begin(), formats.end(), format) != formats.end())
+            {
+                isFormatSupported = context.isDeviceFunctionalitySupported(extension);
+                break;
+            }
+        }
+
+        if (!isFormatSupported)
+            continue;
+
+        bool requirementMet   = true;
+        const auto properties = getPhysicalDeviceFormatProperties(vki, physicalDevice, format);
+
+        if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+            requirementMet = (properties.optimalTilingFeatures & requiredTransferFeatures) == requiredTransferFeatures;
+
+        if (requirementMet && (properties.linearTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
+            requirementMet = (properties.linearTilingFeatures & requiredTransferFeatures) == requiredTransferFeatures;
+
+        if (!requirementMet)
+        {
+            context.getTestContext().getLog()
+                << TestLog::Message << "ERROR: Format " << getFormatName(format)
+                << " supports sampling but not transfer operations" << TestLog::EndMessage;
+            ++numErrors;
+        }
+    }
+
+    if (numErrors)
+        return tcu::TestStatus::fail("Some formats that support sampling operation do not support transfer operations");
+
+    return tcu::TestStatus::pass("");
+}
+
 void createFormatTests(tcu::TestCaseGroup *testGroup)
 {
     DE_STATIC_ASSERT(VK_FORMAT_UNDEFINED == 0);
@@ -4831,6 +4890,7 @@ void createFormatTests(tcu::TestCaseGroup *testGroup)
 
     addFunctionCase(testGroup, "depth_stencil", testDepthStencilSupported);
     addFunctionCase(testGroup, "compressed_formats", testCompressedFormatsSupported);
+    addFunctionCase(testGroup, "sampled_formats", checkSupportKhrMaintenance1, testSampledFormatsRequirements);
 }
 
 VkImageUsageFlags getValidImageUsageFlags(const VkFormatFeatureFlags supportedFeatures,

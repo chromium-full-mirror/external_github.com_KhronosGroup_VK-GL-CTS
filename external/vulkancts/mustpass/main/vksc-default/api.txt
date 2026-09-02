@@ -236617,6 +236617,7 @@ dEQP-VKSC.api.info.format_properties.r8g8b8a8_uint
 dEQP-VKSC.api.info.format_properties.r8g8b8a8_unorm
 dEQP-VKSC.api.info.format_properties.r8g8b8a8_uscaled
 dEQP-VKSC.api.info.format_properties.s8_uint
+dEQP-VKSC.api.info.format_properties.sampled_formats
 dEQP-VKSC.api.info.format_properties.undefined
 dEQP-VKSC.api.info.format_properties.x8_d24_unorm_pack32
 dEQP-VKSC.api.info.get_physical_device_properties2.features.16_bit_storage_features
