@@ -1705,6 +1705,7 @@ cc_library_static {
         "external/vulkancts/modules/vulkan/rasterization/vktRasterizationTests.cpp",
         "external/vulkancts/modules/vulkan/rasterization/vktShaderTileImageTests.cpp",
         "external/vulkancts/modules/vulkan/ray_query/vktRayQueryAccelerationStructuresTests.cpp",
+        "external/vulkancts/modules/vulkan/ray_query/vktRayQueryAmberTests.cpp",
         "external/vulkancts/modules/vulkan/ray_query/vktRayQueryBarycentricCoordinatesTests.cpp",
         "external/vulkancts/modules/vulkan/ray_query/vktRayQueryBuiltinTests.cpp",
         "external/vulkancts/modules/vulkan/ray_query/vktRayQueryCullRayFlagsTests.cpp",
