@@ -307,7 +307,8 @@ void Maint10ResolveCase::checkSupport(Context &context) const
 
     const bool resolveDepth   = (m_params.resolveAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
     const bool resolveStencil = (m_params.resolveAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
-    const auto tcuFormat      = mapVkFormat(m_params.ssFormat);
+    const auto tcuFormatSS    = mapVkFormat(m_params.ssFormat);
+    const auto tcuFormatMS    = mapVkFormat(m_params.msFormat);
 
     if (resolveDepth || resolveStencil)
     {
@@ -338,15 +339,17 @@ void Maint10ResolveCase::checkSupport(Context &context) const
                 TCU_THROW(NotSupportedError, "standardSampleLocations not supported");
         }
 
-        if ((tcu::hasDepthComponent(tcuFormat.order) && !resolveDepth) ||
-            (tcu::hasStencilComponent(tcuFormat.order) && !resolveStencil))
+        if (((tcu::hasDepthComponent(tcuFormatSS.order) || tcu::hasDepthComponent(tcuFormatMS.order)) &&
+             !resolveDepth) ||
+            ((tcu::hasStencilComponent(tcuFormatSS.order) || tcu::hasStencilComponent(tcuFormatMS.order)) &&
+             !resolveStencil))
         {
             if (!dsResolveProps.independentResolveNone)
                 TCU_THROW(NotSupportedError, "independentResolveNone not supported");
         }
     }
 
-    if (tcu::isSRGB(tcuFormat))
+    if (tcu::isSRGB(tcuFormatSS))
     {
         if (m_params.sRGBFlags != SRGBFlags::NONE)
         {
