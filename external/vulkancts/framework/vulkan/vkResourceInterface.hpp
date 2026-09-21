@@ -202,7 +202,6 @@ protected:
     mutable std::map<VkPipeline, VkPipelineOfflineCreateInfo> m_pipelineIdentifiers;
     mutable std::vector<vksc_server::VulkanPipelineSize> m_pipelineSizes;
     std::vector<VkPipelinePoolSize> m_pipelinePoolSizes;
-    tcu::Maybe<uint32_t> m_version;
     tcu::Maybe<bool> m_vulkanSC;
     bool m_enabledHandleDestroy;
 #endif // CTS_USES_VULKANSC

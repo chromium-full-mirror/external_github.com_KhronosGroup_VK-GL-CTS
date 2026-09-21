@@ -4048,17 +4048,6 @@ public:
         }
     }
 
-#ifdef CTS_USES_VULKANSC
-    std::string getInstanceCapabilitiesId() const override
-    {
-        return getRequiredCapabilitiesId();
-    }
-    void initInstanceCapabilities(InstCaps &caps) override
-    {
-        caps.shouldRemoveInstanceOnTestExit(true);
-    }
-#endif
-
     std::string getRequiredCapabilitiesId() const override
     {
         if (m_useComputeQueue)

@@ -386,10 +386,9 @@ TestCaseExecutor::TestCaseExecutor(tcu::TestContext &testCtx)
     // the deviceVersion field, as it will have the same content for each newly created instance.
     // The created copy of m_defaultInstCaps will then be passed to the findCustomManager() function,
     // which creates a new instance based on the result of the TestCase::getInstanceCapabilitiesId() method.
-    const InstCaps defaultInstCaps(m_library->getPlatformInterface(), testCtx.getCommandLine(), InstCaps::DefInstId,
-                                   nullptr, nullptr, false);
-    m_defaultInstCaps = SharedPtr(new InstCaps(m_library->getPlatformInterface(), testCtx.getCommandLine(),
-                                               InstCaps::DefInstId, nullptr, &defaultInstCaps, false));
+    const InstCaps defaultInstCaps(m_library->getPlatformInterface(), InstCaps::DefInstId, nullptr, nullptr);
+    m_defaultInstCaps =
+        SharedPtr(new InstCaps(m_library->getPlatformInterface(), InstCaps::DefInstId, nullptr, &defaultInstCaps));
     const int maxCustomDevices =
         std::clamp(testCtx.getCommandLine().getMaxCustomDevices(), 1, std::numeric_limits<int>::max());
     m_defaultContextManager = ContextManager::create(m_library->getPlatformInterface(), testCtx.getCommandLine(),
@@ -434,7 +433,7 @@ TestCaseExecutor::TestCaseExecutor(tcu::TestContext &testCtx)
     }
 
 #ifdef CTS_USES_VULKANSC
-    m_resourceInterface->initApiVersion(defaultInstCaps.usedApiVersion);
+    m_resourceInterface->initApiVersion(defaultInstCaps.usedInstanceVersion);
 
     // Real Vulkan SC tests are performed in subprocess.
     // Tests run in main process are only used to collect data required by Vulkan SC.

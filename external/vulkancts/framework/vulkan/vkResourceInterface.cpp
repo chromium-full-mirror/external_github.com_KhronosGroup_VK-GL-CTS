@@ -94,7 +94,6 @@ void ResourceInterface::initApiVersion(const uint32_t version)
     const ApiVersion apiVersion = unpackVersion(version);
     const bool vulkanSC         = (apiVersion.variantNum == 1);
 
-    m_version  = tcu::Maybe<uint32_t>(version);
     m_vulkanSC = vulkanSC;
 }
 
