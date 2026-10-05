@@ -1039,8 +1039,6 @@ Move<VkDevice> ContextManager::createDevice(const DevCaps &caps, DevCaps::Runtim
     const InstanceInterface &vki                           = getInstanceInterface();
     const VkPhysicalDevice physicalDevice                  = getPhysicalDevice();
     const VkInstance instance                              = getInstanceHandle();
-    const uint32_t universalQueueIndex =
-        findQueueFamilyIndexWithCaps(vki, physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
 
     // queues block
     std::vector<float> queuePriorities;
@@ -1088,8 +1086,6 @@ Move<VkDevice> ContextManager::createDevice(const DevCaps &caps, DevCaps::Runtim
     std::vector<VkPipelinePoolSize> poolSizes;
     if (cmdLine.isSubProcess())
     {
-        resourceInterface->importPipelineCacheData(vkp, instance, vki, physicalDevice, universalQueueIndex);
-
         if (hasReservationCreateInfo == false)
         {
             dorCI = resourceInterface->getStatMax();

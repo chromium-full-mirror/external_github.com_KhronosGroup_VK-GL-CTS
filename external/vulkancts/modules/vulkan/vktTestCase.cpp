@@ -389,8 +389,6 @@ Move<VkDevice> createDefaultDevice(const PlatformInterface &vkp, VkInstance inst
     std::vector<VkPipelinePoolSize> poolSizes;
     if (cmdLine.isSubProcess())
     {
-        resourceInterface->importPipelineCacheData(vkp, instance, vki, physicalDevice, universalQueueIndex);
-
         dmrCI = resourceInterface->getStatMax();
 
         if (resourceInterface->getCacheDataSize() > 0)

@@ -1058,8 +1058,7 @@ void ResourceInterfaceStandard::resetCommandPool(VkDevice device, VkCommandPool 
 }
 
 void ResourceInterfaceStandard::importPipelineCacheData(const PlatformInterface &vkp, VkInstance instance,
-                                                        const InstanceInterface &vki, VkPhysicalDevice physicalDevice,
-                                                        uint32_t queueIndex)
+                                                        const InstanceInterface &vki, VkPhysicalDevice physicalDevice)
 {
     if (!std::string(m_testCtx.getCommandLine().getPipelineCompilerPath()).empty())
     {
@@ -1073,7 +1072,7 @@ void ResourceInterfaceStandard::importPipelineCacheData(const PlatformInterface 
     }
     else
     {
-        m_cacheData = vksc_server::buildPipelineCache(m_pipelineInput, vkp, instance, vki, physicalDevice, queueIndex);
+        m_cacheData = vksc_server::buildPipelineCache(m_pipelineInput, vkp, instance, vki, physicalDevice);
     }
 
     VkPhysicalDeviceVulkanSC10Properties vulkanSC10Properties = initVulkanStructure();
@@ -1268,12 +1267,11 @@ VkResult ResourceInterfaceVKSC::createShaderModule(VkDevice device, const VkShad
 }
 
 void ResourceInterfaceVKSC::importPipelineCacheData(const PlatformInterface &vkp, VkInstance instance,
-                                                    const InstanceInterface &vki, VkPhysicalDevice physicalDevice,
-                                                    uint32_t queueIndex)
+                                                    const InstanceInterface &vki, VkPhysicalDevice physicalDevice)
 {
     if (noServer())
     {
-        ResourceInterfaceStandard::importPipelineCacheData(vkp, instance, vki, physicalDevice, queueIndex);
+        ResourceInterfaceStandard::importPipelineCacheData(vkp, instance, vki, physicalDevice);
         return;
     }
 

@@ -393,6 +393,18 @@ TestCaseExecutor::TestCaseExecutor(tcu::TestContext &testCtx)
         std::clamp(testCtx.getCommandLine().getMaxCustomDevices(), 1, std::numeric_limits<int>::max());
     m_defaultContextManager = ContextManager::create(m_library->getPlatformInterface(), testCtx.getCommandLine(),
                                                      m_resourceInterface, maxCustomDevices, *m_defaultInstCaps);
+
+#ifdef CTS_USES_VULKANSC
+    if (testCtx.getCommandLine().isSubProcess())
+    {
+        // Import pipeline cache data at a single point where the resource interface is also initialized as it
+        // is a global singleton and therefore the import should only happen once
+        m_resourceInterface->importPipelineCacheData(
+            m_defaultContextManager->getPlatformInterface(), *m_defaultContextManager->getInstance(),
+            *m_defaultContextManager->getInstanceDriver(), m_defaultContextManager->getPhysicalDevice());
+    }
+#endif
+
     m_defaultContextManager->createDefaultDevice(m_defaultContextManager, m_progCollection, testCtx);
 
     m_deviceProperties = getPhysicalDeviceProperties(m_defaultContextManager);
