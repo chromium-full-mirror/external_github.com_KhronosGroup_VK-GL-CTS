@@ -35,6 +35,7 @@
 #include "deRandom.hpp"
 #include "deUniquePtr.hpp"
 #include "deSharedPtr.hpp"
+#include "tcuStringTemplate.hpp"
 #include "vkCmdUtil.hpp"
 #include "vkDefs.hpp"
 #include "vkImageUtil.hpp"
@@ -20167,6 +20168,387 @@ void DescriptorHeapTestCaseDescriptorPreciseSize::initPrograms(vk::SourceCollect
     }
 }
 
+enum class LargeBindingTestType
+{
+    UboToSsbo,
+    MultipleMappings,
+    ArrayBinding,
+};
+
+struct SetAndBinding
+{
+    uint32_t set;
+    uint32_t binding;
+};
+
+struct TestParamsLargeBinding : TestParams
+{
+    LargeBindingTestType testType;
+    std::vector<SetAndBinding> inputs;
+    SetAndBinding output;
+};
+
+class DescriptorHeapTestInstanceLargeBinding final : public DescriptorHeapTestInstanceBase
+{
+public:
+    explicit DescriptorHeapTestInstanceLargeBinding(Context &context, const TestParamsLargeBinding &params)
+        : DescriptorHeapTestInstanceBase(context, params)
+        , m_params(params)
+    {
+    }
+
+    tcu::TestStatus iterate() override;
+
+private:
+    TestParamsLargeBinding m_params;
+};
+
+tcu::TestStatus DescriptorHeapTestInstanceLargeBinding::iterate()
+{
+    const auto &vkd = m_device.getDriver();
+
+    const uint32_t uboCount        = m_params.testType == LargeBindingTestType::UboToSsbo ? 1u : 4u;
+    const uint32_t descriptorCount = uboCount + 1u;
+
+    const VkDeviceSize bufferDescriptorStride = getBufferDescriptorStride(m_descriptorHeapProperties);
+    const VkDeviceSize userHeapSize =
+        alignUp(descriptorCount * bufferDescriptorStride, m_descriptorHeapProperties.resourceHeapAlignment);
+    const VkDeviceSize heapSize = userHeapSize + m_descriptorHeapProperties.minResourceHeapReservedRange;
+
+    auto resourceHeap               = createBufferAndMemory(heapSize, VK_BUFFER_USAGE_2_DESCRIPTOR_HEAP_BIT_EXT |
+                                                                          VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR);
+    char *const resourceHeapHostPtr = static_cast<char *>(resourceHeap->memory->getHostPtr());
+
+    const VkDeviceSize outputBufferSize = uboCount * sizeof(uint32_t);
+    auto outputBuffer = createBufferAndMemory(outputBufferSize, VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR |
+                                                                    VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR);
+    deMemset(outputBuffer->memory->getHostPtr(), 0, static_cast<size_t>(outputBufferSize));
+    flushAlloc(vkd, *m_device, *outputBuffer->memory);
+
+    uint32_t inputValues[4] = {100, 200, 300, 400};
+    std::unique_ptr<Buffer> inputBuffers[4];
+
+    for (uint32_t i = 0; i < descriptorCount; ++i)
+    {
+        VkDeviceAddressRangeEXT addressRange;
+        VkResourceDescriptorInfoEXT resourceInfo = initVulkanStructure();
+
+        if (i == 0)
+        {
+            addressRange.address = outputBuffer->address;
+            addressRange.size    = outputBufferSize;
+            resourceInfo.type    = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+        else
+        {
+            inputBuffers[i - 1] = createBufferAndMemory(
+                sizeof(uint32_t), VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT);
+            deMemcpy(inputBuffers[i - 1]->memory->getHostPtr(), &inputValues[i - 1], sizeof(uint32_t));
+            flushAlloc(vkd, *m_device, *inputBuffers[i - 1]->memory);
+
+            addressRange.address = inputBuffers[i - 1]->address;
+            addressRange.size    = sizeof(uint32_t);
+            resourceInfo.type    = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        }
+
+        resourceInfo.data.pAddressRange = &addressRange;
+
+        VkHostAddressRangeEXT hostRange;
+        hostRange.address = resourceHeapHostPtr + i * bufferDescriptorStride;
+        hostRange.size    = static_cast<size_t>(bufferDescriptorStride);
+
+        VK_CHECK(vkd.writeResourceDescriptorsEXT(*m_device, 1u, &resourceInfo, &hostRange));
+    }
+    flushAlloc(vkd, *m_device, *resourceHeap->memory);
+
+    const uint32_t mappingCount = static_cast<uint32_t>(m_params.inputs.size()) + 1u;
+    std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
+
+    for (uint32_t i = 0; i < mappingCount; ++i)
+    {
+        const SetAndBinding &resource = i == 0 ? m_params.output : m_params.inputs[i - 1];
+
+        VkDescriptorSetAndBindingMappingEXT mapping       = initVulkanStructure();
+        mapping.descriptorSet                             = resource.set;
+        mapping.firstBinding                              = resource.binding;
+        mapping.bindingCount                              = 1u;
+        mapping.resourceMask                              = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+        mapping.source                                    = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
+        mapping.sourceData.constantOffset.heapOffset      = static_cast<uint32_t>(i * bufferDescriptorStride);
+        mapping.sourceData.constantOffset.heapArrayStride = static_cast<uint32_t>(bufferDescriptorStride);
+        mappings.push_back(mapping);
+    }
+
+    VkShaderDescriptorSetAndBindingMappingInfoEXT mappingInfo = initVulkanStructure();
+    mappingInfo.mappingCount                                  = static_cast<uint32_t>(mappings.size());
+    mappingInfo.pMappings                                     = mappings.data();
+
+    auto computeModule = createShaderModule(vkd, *m_device, getShaderBinary("comp"));
+
+    VkPipelineCreateFlags2CreateInfoKHR pipelineCreateFlags2CreateInfo = initVulkanStructure();
+    pipelineCreateFlags2CreateInfo.flags                               = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
+    VkComputePipelineCreateInfo pipelineCreateInfo = initVulkanStructure(&pipelineCreateFlags2CreateInfo);
+    pipelineCreateInfo.stage                       = initVulkanStructure(&mappingInfo);
+    pipelineCreateInfo.stage.stage                 = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineCreateInfo.stage.module                = *computeModule;
+    pipelineCreateInfo.stage.pName                 = "main";
+
+    auto pipeline = createComputePipeline(vkd, *m_device, VK_NULL_HANDLE, &pipelineCreateInfo);
+
+    VkBindHeapInfoEXT resourceHeapBindInfo   = initVulkanStructure();
+    resourceHeapBindInfo.heapRange.address   = resourceHeap->address;
+    resourceHeapBindInfo.heapRange.size      = heapSize;
+    resourceHeapBindInfo.reservedRangeOffset = userHeapSize;
+    resourceHeapBindInfo.reservedRangeSize   = m_descriptorHeapProperties.minResourceHeapReservedRange;
+
+    const VkMemoryBarrier2 memoryBarrier =
+        makeMemoryBarrier2(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+                           VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_READ_BIT);
+
+    VkDependencyInfo dependencyInfo   = initVulkanStructure();
+    dependencyInfo.memoryBarrierCount = 1u;
+    dependencyInfo.pMemoryBarriers    = &memoryBarrier;
+
+    auto cmdPool      = makeCommandPool(vkd, *m_device, m_queueFamilyIndex);
+    auto cmdBufferPtr = allocateCommandBuffer(vkd, *m_device, cmdPool.get(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    auto cmdBuffer    = cmdBufferPtr.get();
+
+    beginCommandBuffer(vkd, cmdBuffer);
+    vkd.cmdBindResourceHeapEXT(cmdBuffer, &resourceHeapBindInfo);
+    vkd.cmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
+    vkd.cmdDispatch(cmdBuffer, 1, 1, 1);
+    vkd.cmdPipelineBarrier2(cmdBuffer, &dependencyInfo);
+    endCommandBuffer(vkd, cmdBuffer);
+
+    submitCommandsAndWait(vkd, *m_device, m_queues[0], cmdBuffer);
+    invalidateAlloc(vkd, *m_device, *outputBuffer->memory);
+
+    const uint32_t *result = static_cast<const uint32_t *>(outputBuffer->memory->getHostPtr());
+    for (uint32_t i = 0; i < uboCount; ++i)
+    {
+        if (result[i] != inputValues[i])
+        {
+            std::stringstream msg;
+            msg << "Result " << i << " expected value " << inputValues[i] << ", but was " << result[i];
+            return tcu::TestStatus::fail(msg.str());
+        }
+    }
+
+    return tcu::TestStatus::pass("Pass");
+}
+
+class DescriptorHeapTestCaseLargeBinding final : public DescriptorHeapTestCaseBase
+{
+public:
+    explicit DescriptorHeapTestCaseLargeBinding(tcu::TestContext &testCtx, const std::string &name,
+                                                const TestParamsLargeBinding &params)
+        : DescriptorHeapTestCaseBase(testCtx, name, params)
+        , m_params(params)
+    {
+    }
+
+    TestInstance *createInstance(Context &context) const override
+    {
+        return new DescriptorHeapTestInstanceLargeBinding(context, m_params);
+    }
+
+    void initPrograms(vk::SourceCollections &programCollection) const override;
+
+private:
+    TestParamsLargeBinding m_params;
+};
+
+void DescriptorHeapTestCaseLargeBinding::initPrograms(vk::SourceCollections &programCollection) const
+{
+    std::map<std::string, std::string> specializations;
+    specializations["OUT_SET"]     = de::toString(m_params.output.set);
+    specializations["OUT_BINDING"] = de::toString(m_params.output.binding);
+
+    const char *assembly = "";
+
+    if (m_params.testType == LargeBindingTestType::UboToSsbo)
+    {
+        specializations["IN_SET"]     = de::toString(m_params.inputs[0].set);
+        specializations["IN_BINDING"] = de::toString(m_params.inputs[0].binding);
+
+        assembly = R"(
+               OpCapability Shader
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpDecorate %In Block
+               OpMemberDecorate %In 0 Offset 0
+               OpDecorate %ubo DescriptorSet ${IN_SET}
+               OpDecorate %ubo Binding ${IN_BINDING}
+               OpDecorate %Out Block
+               OpMemberDecorate %Out 0 Offset 0
+               OpDecorate %ssbo DescriptorSet ${OUT_SET}
+               OpDecorate %ssbo Binding ${OUT_BINDING}
+
+       %void = OpTypeVoid
+    %void_fn = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+         %In = OpTypeStruct %uint
+     %ptr_In = OpTypePointer Uniform %In
+        %Out = OpTypeStruct %uint
+    %ptr_Out = OpTypePointer StorageBuffer %Out
+ %ptr_u_uint = OpTypePointer Uniform %uint
+%ptr_sb_uint = OpTypePointer StorageBuffer %uint
+        %ubo = OpVariable %ptr_In Uniform
+       %ssbo = OpVariable %ptr_Out StorageBuffer
+       %main = OpFunction %void None %void_fn
+      %entry = OpLabel
+    %src_ptr = OpAccessChain %ptr_u_uint %ubo %int_0
+      %value = OpLoad %uint %src_ptr
+    %dst_ptr = OpAccessChain %ptr_sb_uint %ssbo %int_0
+               OpStore %dst_ptr %value
+               OpReturn
+               OpFunctionEnd
+)";
+    }
+    else if (m_params.testType == LargeBindingTestType::MultipleMappings)
+    {
+        for (size_t i = 0; i < m_params.inputs.size(); ++i)
+        {
+            specializations["SET" + de::toString(i)]     = de::toString(m_params.inputs[i].set);
+            specializations["BINDING" + de::toString(i)] = de::toString(m_params.inputs[i].binding);
+        }
+
+        assembly = R"(
+               OpCapability Shader
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+
+               OpDecorate %In Block
+               OpMemberDecorate %In 0 Offset 0
+               OpDecorate %ubo0 DescriptorSet ${SET0}
+               OpDecorate %ubo0 Binding ${BINDING0}
+               OpDecorate %ubo1 DescriptorSet ${SET1}
+               OpDecorate %ubo1 Binding ${BINDING1}
+               OpDecorate %ubo2 DescriptorSet ${SET2}
+               OpDecorate %ubo2 Binding ${BINDING2}
+               OpDecorate %ubo3 DescriptorSet ${SET3}
+               OpDecorate %ubo3 Binding ${BINDING3}
+               OpDecorate %uint_arr4 ArrayStride 4
+               OpDecorate %Out Block
+               OpMemberDecorate %Out 0 Offset 0
+               OpDecorate %ssbo DescriptorSet ${OUT_SET}
+               OpDecorate %ssbo Binding ${OUT_BINDING}
+
+       %void = OpTypeVoid
+    %void_fn = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+      %int_3 = OpConstant %int 3
+     %uint_4 = OpConstant %uint 4
+         %In = OpTypeStruct %uint
+     %ptr_In = OpTypePointer Uniform %In
+  %uint_arr4 = OpTypeArray %uint %uint_4
+        %Out = OpTypeStruct %uint_arr4
+    %ptr_Out = OpTypePointer StorageBuffer %Out
+ %ptr_u_uint = OpTypePointer Uniform %uint
+%ptr_sb_uint = OpTypePointer StorageBuffer %uint
+       %ubo0 = OpVariable %ptr_In Uniform
+       %ubo1 = OpVariable %ptr_In Uniform
+       %ubo2 = OpVariable %ptr_In Uniform
+       %ubo3 = OpVariable %ptr_In Uniform
+       %ssbo = OpVariable %ptr_Out StorageBuffer
+       %main = OpFunction %void None %void_fn
+      %entry = OpLabel
+       %src0 = OpAccessChain %ptr_u_uint %ubo0 %int_0
+       %val0 = OpLoad %uint %src0
+       %dst0 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_0
+               OpStore %dst0 %val0
+       %src1 = OpAccessChain %ptr_u_uint %ubo1 %int_0
+       %val1 = OpLoad %uint %src1
+       %dst1 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_1
+               OpStore %dst1 %val1
+       %src2 = OpAccessChain %ptr_u_uint %ubo2 %int_0
+       %val2 = OpLoad %uint %src2
+       %dst2 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_2
+               OpStore %dst2 %val2
+       %src3 = OpAccessChain %ptr_u_uint %ubo3 %int_0
+       %val3 = OpLoad %uint %src3
+       %dst3 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_3
+               OpStore %dst3 %val3
+               OpReturn
+               OpFunctionEnd
+)";
+    }
+    else
+    {
+        specializations["IN_SET"]     = de::toString(m_params.inputs[0].set);
+        specializations["IN_BINDING"] = de::toString(m_params.inputs[0].binding);
+
+        assembly = R"(
+               OpCapability Shader
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpDecorate %In Block
+               OpMemberDecorate %In 0 Offset 0
+               OpDecorate %ubos DescriptorSet ${IN_SET}
+               OpDecorate %ubos Binding ${IN_BINDING}
+               OpDecorate %uint_arr4 ArrayStride 4
+               OpDecorate %Out Block
+               OpMemberDecorate %Out 0 Offset 0
+               OpDecorate %ssbo DescriptorSet ${OUT_SET}
+               OpDecorate %ssbo Binding ${OUT_BINDING}
+
+       %void = OpTypeVoid
+    %void_fn = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+      %int_3 = OpConstant %int 3
+     %uint_4 = OpConstant %uint 4
+         %In = OpTypeStruct %uint
+    %In_arr4 = OpTypeArray %In %uint_4
+ %ptr_In_arr = OpTypePointer Uniform %In_arr4
+  %uint_arr4 = OpTypeArray %uint %uint_4
+        %Out = OpTypeStruct %uint_arr4
+    %ptr_Out = OpTypePointer StorageBuffer %Out
+ %ptr_u_uint = OpTypePointer Uniform %uint
+%ptr_sb_uint = OpTypePointer StorageBuffer %uint
+       %ubos = OpVariable %ptr_In_arr Uniform
+       %ssbo = OpVariable %ptr_Out StorageBuffer
+       %main = OpFunction %void None %void_fn
+      %entry = OpLabel
+       %src0 = OpAccessChain %ptr_u_uint %ubos %int_0 %int_0
+       %val0 = OpLoad %uint %src0
+       %dst0 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_0
+               OpStore %dst0 %val0
+       %src1 = OpAccessChain %ptr_u_uint %ubos %int_1 %int_0
+       %val1 = OpLoad %uint %src1
+       %dst1 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_1
+               OpStore %dst1 %val1
+       %src2 = OpAccessChain %ptr_u_uint %ubos %int_2 %int_0
+       %val2 = OpLoad %uint %src2
+       %dst2 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_2
+               OpStore %dst2 %val2
+       %src3 = OpAccessChain %ptr_u_uint %ubos %int_3 %int_0
+       %val3 = OpLoad %uint %src3
+       %dst3 = OpAccessChain %ptr_sb_uint %ssbo %int_0 %int_3
+               OpStore %dst3 %val3
+               OpReturn
+               OpFunctionEnd
+)";
+    }
+
+    vk::SpirVAsmBuildOptions options(programCollection.usedVulkanVersion, vk::SPIRV_VERSION_1_3);
+    programCollection.spirvAsmSources.add("comp")
+        << tcu::StringTemplate(assembly).specialize(specializations) << options;
+}
+
 const char *getDescriptorTypeTestName(VkDescriptorType descriptorType)
 {
     switch (descriptorType)
@@ -20886,6 +21268,76 @@ void populateHighBindingTests(tcu::TestCaseGroup *topGroup, uint32_t baseSeed)
                 highBindingGroup->addChild(new DescriptorHeapTestCaseBasic(testCtx, testName, params));
             }
         }
+    }
+
+    const struct
+    {
+        SetAndBinding input;
+        SetAndBinding output;
+        const char *name;
+    } inputOutputTests[] = {
+        {{0x1Fu, 0xFFFFu}, {0x1Fu, 0x10000u}, "1"},
+        {{0x0u, 0x7FFFFFFFu}, {0x1Fu, 0x80000000u}, "2"},
+        {{0x1Fu, 0xFFFFFFFFu}, {0x0u, 0xFFFFFFFFu}, "3"},
+        {{0xFFFFFFFFu, 0xFFFFFFFEu}, {0xFFFFFFFFu, 0xFFFFFFFFu}, "4"},
+    };
+
+    const struct
+    {
+        LargeBindingTestType testType;
+        const char *name;
+    } testTypes[] = {
+        {LargeBindingTestType::UboToSsbo, "ubo_to_ssbo"},
+        {LargeBindingTestType::ArrayBinding, "array_binding"},
+    };
+
+    for (const auto &testType : testTypes)
+    {
+        for (const auto &inputOutputTest : inputOutputTests)
+        {
+            const std::string testName = std::string(testType.name) + "_" + inputOutputTest.name;
+
+            TestParamsLargeBinding params{};
+            params.queue    = VK_QUEUE_COMPUTE_BIT;
+            params.seed     = baseSeed ^ deStringHash(testName.c_str());
+            params.testType = testType.testType;
+            params.inputs   = {inputOutputTest.input};
+            params.output   = inputOutputTest.output;
+
+            highBindingGroup->addChild(new DescriptorHeapTestCaseLargeBinding(testCtx, testName, params));
+        }
+    }
+
+    const struct
+    {
+        const char *name;
+        std::vector<SetAndBinding> inputs;
+        SetAndBinding output;
+    } multipleMappingsTests[] = {
+        {"multiple_mappings_1",
+         {{0x0u, 0x0u}, {0x0u, 0xFFFFu}, {0x0u, 0x10000u}, {0x0u, 0x80000000u}},
+         {0x0u, 0xFFFFFFFFu}},
+        {"multiple_mappings_2",
+         {{0x0u, 0x80000000u}, {0x1Fu, 0xFFFFFFFFu}, {0xFFFFFFFFu, 0x0u}, {0x7FFFFFFFu, 0xFFFFu}},
+         {0x80000000u, 0x10000u}},
+        {"multiple_mappings_3",
+         {{0x0u, 0xFFFFFFFFu}, {0x1u, 0xFFFFFFFFu}, {0x1Fu, 0xFFFFFFFFu}, {0xFFFFFFFFu, 0xFFFFFFFFu}},
+         {0x20u, 0xFFFFFFFFu}},
+        {"multiple_mappings_4",
+         {{0x1Fu, 0xFFFFFFFBu}, {0x1Fu, 0xFFFFFFFCu}, {0x1Fu, 0xFFFFFFFDu}, {0x1Fu, 0xFFFFFFFEu}},
+         {0x1Fu, 0xFFFFFFFFu}},
+    };
+
+    for (const auto &test : multipleMappingsTests)
+    {
+        TestParamsLargeBinding params{};
+        params.queue    = VK_QUEUE_COMPUTE_BIT;
+        params.seed     = baseSeed ^ deStringHash(test.name);
+        params.testType = LargeBindingTestType::MultipleMappings;
+        params.inputs   = test.inputs;
+        params.output   = test.output;
+
+        highBindingGroup->addChild(new DescriptorHeapTestCaseLargeBinding(testCtx, test.name, params));
     }
 
     topGroup->addChild(highBindingGroup.release());
