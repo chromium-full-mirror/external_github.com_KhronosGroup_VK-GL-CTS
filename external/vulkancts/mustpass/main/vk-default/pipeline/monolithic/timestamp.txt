@@ -148,6 +148,7 @@ dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_fragment_shader
 dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_geometry_shader_stage
 dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_host_stage
 dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_late_fragment_tests_stage
+dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_none_stage
 dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_tessellation_control_shader_stage
 dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_tessellation_evaluation_shader_stage
 dEQP-VK.pipeline.monolithic.timestamp.misc_tests.timestamp_stage_top_of_pipe_stage

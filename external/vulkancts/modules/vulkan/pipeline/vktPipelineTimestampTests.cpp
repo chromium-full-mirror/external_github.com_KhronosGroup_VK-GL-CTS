@@ -117,6 +117,11 @@ std::string getPipelineStageFlagStr(const VkPipelineStageFlagBits stage, bool is
         STAGE_CASE(ALL_GRAPHICS)
         STAGE_CASE(ALL_COMMANDS)
 #undef STAGE_CASE
+    case VK_PIPELINE_STAGE_NONE:
+    {
+        GEN_DESC_STRING(NONE, stage);
+        break;
+    }
     default:
         desc << "unknown stage!";
         DE_FATAL("Unknown Stage!");
@@ -2787,7 +2792,7 @@ tcu::TestStatus FillBufferBeforeCopyTestInstance::iterate(void)
 class TimestampPipelineStageTestInstance : public vkt::TestInstance
 {
 public:
-    TimestampPipelineStageTestInstance(Context &context, VkPipelineStageFlagBits stage)
+    TimestampPipelineStageTestInstance(Context &context, VkPipelineStageFlagBits2 stage)
         : vkt::TestInstance(context)
         , m_stage(stage)
     {
@@ -2796,7 +2801,7 @@ public:
     virtual tcu::TestStatus iterate(void);
 
 protected:
-    VkPipelineStageFlagBits m_stage;
+    VkPipelineStageFlagBits2 m_stage;
 };
 
 tcu::TestStatus TimestampPipelineStageTestInstance::iterate(void)
@@ -2828,7 +2833,17 @@ tcu::TestStatus TimestampPipelineStageTestInstance::iterate(void)
     vk.cmdWriteTimestamp(*cmdBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, *queryPool, 0u);
     vk.cmdPipelineBarrier(*cmdBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0u, 0u,
                           nullptr, 0u, nullptr, 0u, nullptr);
-    vk.cmdWriteTimestamp(*cmdBuffer, m_stage, *queryPool, 1u);
+    if (m_stage == VK_PIPELINE_STAGE_2_NONE)
+    {
+#ifndef CTS_USES_VULKANSC
+
+        vk.cmdWriteTimestamp2(*cmdBuffer, m_stage, *queryPool, 1u);
+#endif
+    }
+    else
+    {
+        vk.cmdWriteTimestamp(*cmdBuffer, static_cast<VkPipelineStageFlagBits>(m_stage), *queryPool, 1u);
+    }
     endCommandBuffer(vk, *cmdBuffer);
 
     submitCommandsAndWait(vk, vkDevice, queue, cmdBuffer.get());
@@ -2838,7 +2853,7 @@ tcu::TestStatus TimestampPipelineStageTestInstance::iterate(void)
     for (uint32_t queryNdx = 0u; queryNdx < DE_LENGTH_OF_ARRAY(timestampValues); ++queryNdx)
         timestampValues[queryNdx] &= timestampMask;
 
-    if (timestampValues[0u] > timestampValues[1u])
+    if (m_stage != VK_PIPELINE_STAGE_2_NONE && timestampValues[0u] > timestampValues[1u])
     {
         std::ostringstream msg;
         msg << "Test stage timestamp (" << timestampValues[1u] << ") is smaller than the preceding guard timestamp ("
@@ -2852,7 +2867,7 @@ tcu::TestStatus TimestampPipelineStageTestInstance::iterate(void)
 class TimestampPipelineStageTest : public vkt::TestCase
 {
 public:
-    TimestampPipelineStageTest(tcu::TestContext &testContext, const std::string &name, VkPipelineStageFlagBits stage)
+    TimestampPipelineStageTest(tcu::TestContext &testContext, const std::string &name, VkPipelineStageFlagBits2 stage)
         : vkt::TestCase(testContext, name)
         , m_stage(stage)
     {
@@ -2865,7 +2880,7 @@ public:
     }
 
 protected:
-    VkPipelineStageFlagBits m_stage;
+    VkPipelineStageFlagBits2 m_stage;
 };
 
 void TimestampPipelineStageTest::checkSupport(Context &context) const
@@ -2876,6 +2891,9 @@ void TimestampPipelineStageTest::checkSupport(Context &context) const
     const VkPhysicalDeviceFeatures &features = context.getDeviceFeatures();
     switch (m_stage)
     {
+    case VK_PIPELINE_STAGE_2_NONE:
+        context.requireDeviceFunctionality("VK_KHR_synchronization2");
+        break;
     case VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT:
     case VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT:
         if (!features.tessellationShader)
@@ -4542,6 +4560,9 @@ tcu::TestCaseGroup *createTimestampTests(tcu::TestContext &testCtx_, PipelineCon
                             VK_PIPELINE_STAGE_HOST_BIT,
                             VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
                             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+#ifndef CTS_USES_VULKANSC
+                            VK_PIPELINE_STAGE_NONE,
+#endif
                         };
                         for (uint32_t stageNdx = 0u; stageNdx < DE_LENGTH_OF_ARRAY(pipelineStages); ++stageNdx)
                         {
