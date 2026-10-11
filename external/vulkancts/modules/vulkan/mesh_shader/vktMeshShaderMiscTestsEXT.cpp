@@ -6284,6 +6284,254 @@ tcu::TestStatus EmitInControlFlowInstance::iterate(void)
     return tcu::TestStatus::pass("Pass");
 }
 
+struct EmitMeshTasksZeroParams
+{
+    bool allZero;
+    bool dynamic;
+};
+
+class EmitMeshTasksZeroInstance : public vkt::TestInstance
+{
+public:
+    EmitMeshTasksZeroInstance(Context &context, const EmitMeshTasksZeroParams &params)
+        : vkt::TestInstance(context)
+        , m_params(params)
+    {
+    }
+
+    tcu::TestStatus iterate() override;
+
+private:
+    const EmitMeshTasksZeroParams m_params;
+};
+
+tcu::TestStatus EmitMeshTasksZeroInstance::iterate(void)
+{
+    const auto ctx = m_context.getContextCommonData();
+    const tcu::IVec3 fbExtent(4, 4, 1);
+    const auto extentVk  = makeExtent3D(fbExtent);
+    const auto imgFormat = VK_FORMAT_R8G8B8A8_UNORM;
+    const auto imgUsage  = (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    const tcu::Vec4 clearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    ImageWithBuffer colorBuffer(ctx.vkd, ctx.device, ctx.allocator, extentVk, imgFormat, imgUsage, VK_IMAGE_TYPE_2D);
+
+    const auto countsSize       = static_cast<VkDeviceSize>(sizeof(uint32_t) * 3);
+    const auto countsBufferInfo = makeBufferCreateInfo(countsSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    BufferWithMemory countsBuffer(ctx.vkd, ctx.device, ctx.allocator, countsBufferInfo, MemoryRequirement::HostVisible);
+    auto &countsAlloc    = countsBuffer.getAllocation();
+    uint32_t *countsData = static_cast<uint32_t *>(countsAlloc.getHostPtr());
+    countsData[0]        = (m_params.allZero ? 0u : 2u);
+    countsData[1]        = (m_params.allZero ? 0u : 2u);
+    countsData[2]        = 0u;
+    flushAlloc(ctx.vkd, ctx.device, countsAlloc);
+
+    DescriptorSetLayoutBuilder setLayoutBuilder;
+    setLayoutBuilder.addSingleBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_TASK_BIT_EXT);
+    const auto setLayout = setLayoutBuilder.build(ctx.vkd, ctx.device);
+
+    DescriptorPoolBuilder poolBuilder;
+    poolBuilder.addType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    const auto descriptorPool =
+        poolBuilder.build(ctx.vkd, ctx.device, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, 1u);
+    const auto descriptorSet = makeDescriptorSet(ctx.vkd, ctx.device, *descriptorPool, *setLayout);
+
+    DescriptorSetUpdateBuilder updateBuilder;
+    const auto countsDescInfo = makeDescriptorBufferInfo(countsBuffer.get(), 0ull, countsSize);
+    updateBuilder.writeSingle(*descriptorSet, DescriptorSetUpdateBuilder::Location::binding(0u),
+                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &countsDescInfo);
+    updateBuilder.update(ctx.vkd, ctx.device);
+
+    const auto &binaries  = m_context.getBinaryCollection();
+    const auto taskShader = createShaderModule(ctx.vkd, ctx.device, binaries.get("task"));
+    const auto meshShader = createShaderModule(ctx.vkd, ctx.device, binaries.get("mesh"));
+    const auto fragShader = createShaderModule(ctx.vkd, ctx.device, binaries.get("frag"));
+
+    const auto pipelineLayout = makePipelineLayout(ctx.vkd, ctx.device, *setLayout);
+    const auto renderPass     = makeRenderPass(ctx.vkd, ctx.device, imgFormat);
+    const auto framebuffer =
+        makeFramebuffer(ctx.vkd, ctx.device, *renderPass, colorBuffer.getImageView(), extentVk.width, extentVk.height);
+
+    const std::vector<VkViewport> viewports(1u, makeViewport(fbExtent));
+    const std::vector<VkRect2D> scissors(1u, makeRect2D(fbExtent));
+
+    const auto pipeline = makeGraphicsPipeline(ctx.vkd, ctx.device, *pipelineLayout, *taskShader, *meshShader,
+                                               *fragShader, *renderPass, viewports, scissors);
+
+    CommandPoolWithBuffer cmd(ctx.vkd, ctx.device, ctx.qfIndex);
+    const auto cmdBuffer = *cmd.cmdBuffer;
+
+    beginCommandBuffer(ctx.vkd, cmdBuffer);
+    beginRenderPass(ctx.vkd, cmdBuffer, *renderPass, *framebuffer, scissors.at(0u), clearColor);
+    ctx.vkd.cmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
+    ctx.vkd.cmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipelineLayout, 0u, 1u,
+                                  &descriptorSet.get(), 0u, nullptr);
+    ctx.vkd.cmdDrawMeshTasksEXT(cmdBuffer, 1u, 1u, 1u);
+    endRenderPass(ctx.vkd, cmdBuffer);
+    copyImageToBuffer(ctx.vkd, cmdBuffer, colorBuffer.getImage(), colorBuffer.getBuffer(), fbExtent.swizzle(0, 1));
+    endCommandBuffer(ctx.vkd, cmdBuffer);
+    submitCommandsAndWait(ctx.vkd, ctx.device, ctx.queue, cmdBuffer);
+
+    const auto tcuFormat = mapVkFormat(imgFormat);
+    tcu::TextureLevel refLevel(tcuFormat, fbExtent.x(), fbExtent.y(), fbExtent.z());
+    tcu::clear(refLevel.getAccess(), clearColor);
+
+    invalidateAlloc(ctx.vkd, ctx.device, colorBuffer.getBufferAllocation());
+    tcu::ConstPixelBufferAccess result(tcuFormat, fbExtent, colorBuffer.getBufferAllocation().getHostPtr());
+
+    const tcu::Vec4 threshold(0.0f);
+    auto &log = m_context.getTestContext().getLog();
+    if (!tcu::floatThresholdCompare(log, "Result", "", refLevel.getAccess(), result, threshold,
+                                    tcu::COMPARE_LOG_ON_ERROR))
+        TCU_FAIL("Unexpected results in color buffer; check log for details --");
+
+    return tcu::TestStatus::pass("Pass");
+}
+
+class EmitMeshTasksZeroCase : public vkt::TestCase
+{
+public:
+    EmitMeshTasksZeroCase(tcu::TestContext &testCtx, const std::string &name, const EmitMeshTasksZeroParams &params)
+        : vkt::TestCase(testCtx, name)
+        , m_params(params)
+    {
+    }
+
+    TestInstance *createInstance(Context &context) const override
+    {
+        return new EmitMeshTasksZeroInstance(context, m_params);
+    }
+    void checkSupport(Context &context) const override;
+    void initPrograms(vk::SourceCollections &programCollection) const override;
+
+protected:
+    const EmitMeshTasksZeroParams m_params;
+};
+
+void EmitMeshTasksZeroCase::checkSupport(Context &context) const
+{
+    checkTaskMeshShaderSupportEXT(context, true, true);
+}
+
+void EmitMeshTasksZeroCase::initPrograms(vk::SourceCollections &programCollection) const
+{
+    const auto buildOptions    = getMinMeshEXTBuildOptions(programCollection.usedVulkanVersion);
+    const auto spvBuildOptions = getMinMeshEXTSpvBuildOptions(programCollection.usedVulkanVersion);
+
+    std::string task;
+    if (m_params.dynamic)
+    {
+        task = R"(               OpCapability MeshShadingEXT
+               OpExtension "SPV_EXT_mesh_shader"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint TaskEXT %main "main" %counts %payload
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 460
+               OpSourceExtension "GL_EXT_mesh_shader"
+               OpName %main "main"
+               OpName %Counts "Counts"
+               OpMemberName %Counts 0 "x"
+               OpMemberName %Counts 1 "y"
+               OpMemberName %Counts 2 "z"
+               OpName %counts "counts"
+               OpName %payload "payload"
+               OpDecorate %Counts Block
+               OpMemberDecorate %Counts 0 NonWritable
+               OpMemberDecorate %Counts 0 Offset 0
+               OpMemberDecorate %Counts 1 NonWritable
+               OpMemberDecorate %Counts 1 Offset 4
+               OpMemberDecorate %Counts 2 NonWritable
+               OpMemberDecorate %Counts 2 Offset 8
+               OpDecorate %counts NonWritable
+               OpDecorate %counts Binding 0
+               OpDecorate %counts DescriptorSet 0
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+     %Counts = OpTypeStruct %uint %uint %uint
+%_ptr_StorageBuffer_Counts = OpTypePointer StorageBuffer %Counts
+     %counts = OpVariable %_ptr_StorageBuffer_Counts StorageBuffer
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%_ptr_TaskPayloadWorkgroupEXT_uint = OpTypePointer TaskPayloadWorkgroupEXT %uint
+    %payload = OpVariable %_ptr_TaskPayloadWorkgroupEXT_uint TaskPayloadWorkgroupEXT
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+         %13 = OpAccessChain %_ptr_StorageBuffer_uint %counts %int_0
+         %14 = OpLoad %uint %13
+         %16 = OpAccessChain %_ptr_StorageBuffer_uint %counts %int_1
+         %17 = OpLoad %uint %16
+         %19 = OpAccessChain %_ptr_StorageBuffer_uint %counts %int_2
+         %20 = OpLoad %uint %19
+               OpEmitMeshTasksEXT %14 %17 %20 %payload
+               OpFunctionEnd)";
+    }
+    else
+    {
+        const std::string xy = (m_params.allZero ? "%uint_0" : "%uint_2");
+        task                 = R"(               OpCapability MeshShadingEXT
+               OpExtension "SPV_EXT_mesh_shader"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint TaskEXT %main "main" %payload
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 460
+               OpSourceExtension "GL_EXT_mesh_shader"
+               OpName %main "main"
+               OpName %payload "payload"
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%_ptr_TaskPayloadWorkgroupEXT_uint = OpTypePointer TaskPayloadWorkgroupEXT %uint
+    %payload = OpVariable %_ptr_TaskPayloadWorkgroupEXT_uint TaskPayloadWorkgroupEXT
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+               OpEmitMeshTasksEXT )" +
+               xy + " " + xy + R"( %uint_0 %payload
+               OpFunctionEnd)";
+    }
+    programCollection.spirvAsmSources.add("task") << task << spvBuildOptions;
+
+    const std::string mesh = R"(#version 460
+#extension GL_EXT_mesh_shader : enable
+
+layout(local_size_x=1) in;
+layout(triangles) out;
+layout(max_vertices=3, max_primitives=1) out;
+
+void main () {
+    SetMeshOutputsEXT(3u, 1u);
+    gl_MeshVerticesEXT[0].gl_Position = vec4(-1.0f, -1.0f, 0.0f, 1.0f);
+    gl_MeshVerticesEXT[1].gl_Position = vec4( 3.0f, -1.0f, 0.0f, 1.0f);
+    gl_MeshVerticesEXT[2].gl_Position = vec4(-1.0f,  3.0f, 0.0f, 1.0f);
+    gl_PrimitiveTriangleIndicesEXT[0] = uvec3(0u, 1u, 2u);
+}
+)";
+    programCollection.glslSources.add("mesh") << glu::MeshSource(mesh) << buildOptions;
+
+    const std::string frag = R"(#version 460
+layout (location=0) out vec4 outColor;
+void main(void) {
+    outColor = vec4(0.0, 0.0, 1.0, 1.0);
+}
+)";
+    programCollection.glslSources.add("frag") << glu::FragmentSource(frag);
+}
+
 void workGroupOrderingCheckSupport(Context &context)
 {
     checkTaskMeshShaderSupportEXT(context, true, true);
@@ -7593,6 +7841,27 @@ tcu::TestCaseGroup *createMeshShaderMiscTestsEXT(tcu::TestContext &testCtx)
         const auto testName = std::string("emit_in_control_flow") + (badEmitLast ? "_bad_emit_last" : "");
         const EmitInControlFlowParams params{badEmitLast};
         miscTests->addChild(new EmitInControlFlowCase(testCtx, testName, params));
+    }
+
+    {
+        const struct
+        {
+            bool allZero;
+            const char *name;
+        } zeroCases[] = {
+            {false, "z"},
+            {true, "xyz"},
+        };
+
+        for (const auto &zeroCase : zeroCases)
+        {
+            for (const bool dynamic : {false, true})
+            {
+                const auto testName = std::string("zero_") + zeroCase.name + (dynamic ? "_dynamic" : "_constant");
+                const EmitMeshTasksZeroParams params{zeroCase.allZero, dynamic};
+                miscTests->addChild(new EmitMeshTasksZeroCase(testCtx, testName, params));
+            }
+        }
     }
 
     addFunctionCaseWithPrograms(miscTests.get(), "work_group_ordering", workGroupOrderingCheckSupport,
