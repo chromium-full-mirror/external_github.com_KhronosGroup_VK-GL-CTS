@@ -7244,6 +7244,23 @@ tcu::TestCaseGroup *createExtendedDynamicStateTests(tcu::TestContext &testCtx,
                 // Dynamically disable color blending
                 orderingGroup->addChild(new ExtendedDynamicStateTest(testCtx, "color_blend_disable", config));
             }
+            {
+                TestConfig config(pipelineConstructionType, kOrdering, kUseMeshShaders);
+
+                const ColorBlendEq oldColorEq(vk::VK_BLEND_FACTOR_ZERO, vk::VK_BLEND_FACTOR_ONE, vk::VK_BLEND_OP_ADD,
+                                              vk::VK_BLEND_FACTOR_ZERO, vk::VK_BLEND_FACTOR_ONE, vk::VK_BLEND_OP_ADD);
+
+                config.colorBlendEquationConfig.staticValue  = oldColorEq;
+                config.colorBlendEquationConfig.dynamicValue = oldColorEq;
+
+                config.colorBlendEnableConfig.staticValue  = true;
+                config.colorBlendEnableConfig.dynamicValue = false;
+
+                config.clearColorValue = vk::makeClearValueColor(kTransparentClearColor);
+
+                orderingGroup->addChild(
+                    new ExtendedDynamicStateTest(testCtx, "color_blend_disable_dynamic_equation", config));
+            }
 
             // Color blend equation.
             {

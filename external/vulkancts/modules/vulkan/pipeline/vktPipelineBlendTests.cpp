@@ -3124,6 +3124,161 @@ void MultisampleBlendTest::checkSupport(Context &context) const
         TCU_THROW(NotSupportedError, "Format not supported");
 }
 
+class DisabledBlendTestInstance : public vkt::TestInstance
+{
+public:
+    DisabledBlendTestInstance(Context &context, PipelineConstructionType pipelineConstructionType)
+        : vkt::TestInstance(context)
+        , m_pipelineConstructionType(pipelineConstructionType)
+    {
+    }
+    virtual ~DisabledBlendTestInstance()
+    {
+    }
+
+    virtual tcu::TestStatus iterate();
+
+private:
+    const PipelineConstructionType m_pipelineConstructionType;
+};
+
+tcu::TestStatus DisabledBlendTestInstance::iterate()
+{
+    const InstanceInterface &vki          = m_context.getInstanceInterface();
+    const DeviceInterface &vkd            = m_context.getDeviceInterface();
+    const VkPhysicalDevice physicalDevice = m_context.getPhysicalDevice();
+    const VkDevice device                 = m_context.getDevice();
+    Allocator &allocator                  = m_context.getDefaultAllocator();
+    const VkQueue queue                   = m_context.getUniversalQueue();
+    const uint32_t queueFamilyIndex       = m_context.getUniversalQueueFamilyIndex();
+    auto &log                             = m_context.getTestContext().getLog();
+
+    const tcu::IVec3 extent(1, 1, 1);
+    const auto extentVk                = makeExtent3D(extent);
+    const VkFormat colorFormat         = VK_FORMAT_R8G8B8A8_UNORM;
+    const VkImageUsageFlags colorUsage = (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+
+    ImageWithBuffer colorBuffer(vkd, device, allocator, extentVk, colorFormat, colorUsage, VK_IMAGE_TYPE_2D);
+
+    RenderPassWrapper renderPass(m_pipelineConstructionType, vkd, device, colorFormat);
+    renderPass.createFramebuffer(vkd, device, colorBuffer.getImage(), colorBuffer.getImageView(), extentVk.width,
+                                 extentVk.height);
+
+    VkPipelineColorBlendAttachmentState blendState = {};
+    blendState.blendEnable                         = VK_FALSE;
+    blendState.srcColorBlendFactor                 = VK_BLEND_FACTOR_ZERO;
+    blendState.dstColorBlendFactor                 = VK_BLEND_FACTOR_ONE;
+    blendState.colorBlendOp                        = VK_BLEND_OP_ADD;
+    blendState.srcAlphaBlendFactor                 = VK_BLEND_FACTOR_ZERO;
+    blendState.dstAlphaBlendFactor                 = VK_BLEND_FACTOR_ONE;
+    blendState.alphaBlendOp                        = VK_BLEND_OP_ADD;
+    blendState.colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    VkPipelineColorBlendStateCreateInfo colorBlendState = initVulkanStructure();
+    colorBlendState.attachmentCount                     = 1u;
+    colorBlendState.pAttachments                        = &blendState;
+
+    const VkPipelineVertexInputStateCreateInfo vertexInputState = initVulkanStructure();
+
+    const std::vector<VkViewport> viewports{makeViewport(extent)};
+    const std::vector<VkRect2D> scissors{makeRect2D(extent)};
+
+    const auto pipelineLayout       = PipelineLayoutWrapper(m_pipelineConstructionType, vkd, device);
+    const auto vertexShaderModule   = ShaderWrapper(vkd, device, m_context.getBinaryCollection().get("vert"));
+    const auto fragmentShaderModule = ShaderWrapper(vkd, device, m_context.getBinaryCollection().get("frag"));
+
+    GraphicsPipelineWrapper pipeline(vki, vkd, physicalDevice, device, m_context.getDeviceExtensions(),
+                                     m_pipelineConstructionType);
+    pipeline.setDefaultTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)
+        .setDefaultRasterizationState()
+        .setDefaultDepthStencilState()
+        .setDefaultMultisampleState()
+        .setupVertexInputState(&vertexInputState)
+        .setupPreRasterizationShaderState(viewports, scissors, pipelineLayout, *renderPass, 0u, vertexShaderModule)
+        .setupFragmentShaderState(pipelineLayout, *renderPass, 0u, fragmentShaderModule)
+        .setupFragmentOutputState(*renderPass, 0u, &colorBlendState)
+        .setMonolithicPipelineLayout(pipelineLayout)
+        .buildPipeline();
+
+    const auto cmdPool      = makeCommandPool(vkd, device, queueFamilyIndex);
+    const auto cmdBufferPtr = allocateCommandBuffer(vkd, device, *cmdPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    const auto cmdBuffer    = *cmdBufferPtr;
+
+    beginCommandBuffer(vkd, cmdBuffer);
+    renderPass.begin(vkd, cmdBuffer, scissors.at(0u), tcu::Vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    pipeline.bind(cmdBuffer);
+    vkd.cmdDraw(cmdBuffer, 4u, 1u, 0u, 0u);
+    renderPass.end(vkd, cmdBuffer);
+    copyImageToBuffer(vkd, cmdBuffer, colorBuffer.getImage(), colorBuffer.getBuffer(), extent.swizzle(0, 1));
+    endCommandBuffer(vkd, cmdBuffer);
+    submitCommandsAndWait(vkd, device, queue, cmdBuffer);
+
+    const auto tcuColorFormat = mapVkFormat(colorFormat);
+    invalidateAlloc(vkd, device, colorBuffer.getBufferAllocation());
+    const tcu::ConstPixelBufferAccess result(tcuColorFormat, extent, colorBuffer.getBufferAllocation().getHostPtr());
+
+    tcu::TextureLevel referenceLevel(tcuColorFormat, extent.x(), extent.y(), extent.z());
+    const tcu::PixelBufferAccess reference = referenceLevel.getAccess();
+    tcu::clear(reference, tcu::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+    const tcu::Vec4 threshold(0.0f);
+    if (!tcu::floatThresholdCompare(log, "Result", "", reference, result, threshold, tcu::COMPARE_LOG_ON_ERROR))
+        return tcu::TestStatus::fail("Unexpected color in the attachment; check log for details");
+
+    return tcu::TestStatus::pass("Pass");
+}
+
+class DisabledBlendTest : public vkt::TestCase
+{
+public:
+    DisabledBlendTest(tcu::TestContext &testContext, const std::string &name,
+                      PipelineConstructionType pipelineConstructionType)
+        : vkt::TestCase(testContext, name)
+        , m_pipelineConstructionType(pipelineConstructionType)
+    {
+    }
+    virtual ~DisabledBlendTest(void)
+    {
+    }
+
+    virtual TestInstance *createInstance(Context &context) const
+    {
+        return new DisabledBlendTestInstance(context, m_pipelineConstructionType);
+    }
+
+    virtual void initPrograms(SourceCollections &sourceCollections) const;
+    virtual void checkSupport(Context &context) const;
+
+private:
+    const PipelineConstructionType m_pipelineConstructionType;
+};
+
+void DisabledBlendTest::initPrograms(SourceCollections &sourceCollections) const
+{
+    std::ostringstream vert;
+    vert << "#version 450\n"
+         << "void main() {\n"
+         << "    vec2 pos = vec2(float(gl_VertexIndex & 1), float((gl_VertexIndex >> 1) & 1));\n"
+         << "    gl_Position = vec4(pos * 2.0f - 1.0f, 0.0f, 1.0f);\n"
+         << "}\n";
+    sourceCollections.glslSources.add("vert") << glu::VertexSource(vert.str());
+
+    std::ostringstream frag;
+    frag << "#version 460\n"
+         << "layout (location=0) out vec4 outColor;\n"
+         << "void main(void) {\n"
+         << "    outColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
+         << "}\n";
+    sourceCollections.glslSources.add("frag") << glu::FragmentSource(frag.str());
+}
+
+void DisabledBlendTest::checkSupport(Context &context) const
+{
+    checkPipelineConstructionRequirements(context.getInstanceInterface(), context.getPhysicalDevice(),
+                                          m_pipelineConstructionType);
+}
+
 } // anonymous namespace
 
 std::string getBlendStateSetName(const VkPipelineColorBlendAttachmentState blendStates[BlendTest::QUAD_COUNT])
@@ -3564,6 +3719,15 @@ tcu::TestCaseGroup *createBlendTests(tcu::TestContext &testCtx, PipelineConstruc
         }
 
         blendTests->addChild(multisampleTests.release());
+    }
+
+    if (genFormatTests)
+    {
+        de::MovePtr<tcu::TestCaseGroup> disabledTests(new tcu::TestCaseGroup(testCtx, "disabled"));
+
+        disabledTests->addChild(new DisabledBlendTest(testCtx, "ignored_equation", pipelineConstructionType));
+
+        blendTests->addChild(disabledTests.release());
     }
 
     blendTests->addChild(clampTests.release());
