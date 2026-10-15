@@ -433,7 +433,6 @@ Move<VkRenderPass> makeRenderPass(const DeviceInterface &vk, const VkDevice devi
         0u,                     //  uint32_t attachment;
         VK_IMAGE_LAYOUT_GENERAL //  VkImageLayout layout;
     };
-    const uint32_t preserveAttachment               = 1u;
     const VkAttachmentReference inputAttachmentRef1 = {
         0u,                     //  uint32_t attachment;
         VK_IMAGE_LAYOUT_GENERAL //  VkImageLayout layout;
@@ -452,8 +451,8 @@ Move<VkRenderPass> makeRenderPass(const DeviceInterface &vk, const VkDevice devi
             &colorAttachmentRef0,            //  const VkAttachmentReference* pColorAttachments;
             nullptr,                         //  const VkAttachmentReference* pResolveAttachments;
             nullptr,                         //  const VkAttachmentReference* pDepthStencilAttachment;
-            1u,                              //  uint32_t preserveAttachmentCount;
-            &preserveAttachment              //  const uint32_t* pPreserveAttachments;
+            0u,                              //  uint32_t preserveAttachmentCount;
+            nullptr                          //  const uint32_t* pPreserveAttachments;
         },
         {
             (VkSubpassDescriptionFlags)0,    //  VkSubpassDescriptionFlags flags;

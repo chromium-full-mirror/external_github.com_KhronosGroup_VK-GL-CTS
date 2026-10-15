@@ -1857,6 +1857,25 @@ bool isInAttachmentReferences(const std::vector<VkAttachmentReference2> &referen
     return false;
 }
 
+bool subpassUsesAttachment(const VkSubpassDescription2 &subpass, const uint32_t attachment)
+{
+    for (uint32_t i = 0; i < subpass.inputAttachmentCount; ++i)
+        if (subpass.pInputAttachments[i].attachment == attachment)
+            return true;
+
+    for (uint32_t i = 0; i < subpass.colorAttachmentCount; ++i)
+        if (subpass.pColorAttachments[i].attachment == attachment ||
+            (subpass.pResolveAttachments && subpass.pResolveAttachments[i].attachment == attachment))
+            return true;
+
+    if (subpass.pDepthStencilAttachment && subpass.pDepthStencilAttachment->attachment == attachment)
+        return true;
+
+    const auto dsResolve = findStructure<VkSubpassDescriptionDepthStencilResolve>(subpass.pNext);
+    return dsResolve && dsResolve->pDepthStencilResolveAttachment &&
+           dsResolve->pDepthStencilResolveAttachment->attachment == attachment;
+}
+
 void addSubpassDescription(
     const TestParams &params, const uint32_t passNdx, std::vector<VkAttachmentReference2> &attachmentReferences,
     std::vector<VkAttachmentReference2> &resolveAttachmentReferences,
@@ -1999,6 +2018,21 @@ void addSubpassDescription(
     {
         if (attachmentNdxes[7] != -1)
             preserveAttachments->push_back(attachmentNdxes[7]);
+    }
+
+    // An attachment can only be preserved after a prior subpass used it (VUID-VkRenderPassCreateInfo2-None-10916)
+    if (preserveAttachments)
+    {
+        const auto notUsedBefore = [&subpasses](const uint32_t attachment)
+        {
+            for (const VkSubpassDescription2 &prior : subpasses)
+                if (subpassUsesAttachment(prior, attachment))
+                    return false;
+            return true;
+        };
+        preserveAttachments->erase(
+            std::remove_if(preserveAttachments->begin(), preserveAttachments->end(), notUsedBefore),
+            preserveAttachments->end());
     }
 
     VkSubpassDescription2 subpassDescription = {

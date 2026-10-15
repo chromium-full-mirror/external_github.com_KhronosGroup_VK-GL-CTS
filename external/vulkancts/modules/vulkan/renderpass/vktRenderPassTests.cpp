@@ -7151,6 +7151,23 @@ void addAttachmentAllocationTests(tcu::TestCaseGroup *group, const TestConfigExt
                                 preserveAttachments.push_back(attachmentIndex);
                         }
 
+                        // A preserved attachment needs a dependency from a prior subpass that uses or preserves it
+                        // (VUID-VkRenderPassCreateInfo-None-10915). The previous subpass does.
+                        if (!preserveAttachments.empty())
+                        {
+                            bool foundDependency = false;
+
+                            for (const SubpassDependency &dependency : deps)
+                                if (dependency.getSrcPass() == subpassIndex - 1 &&
+                                    dependency.getDstPass() == subpassIndex)
+                                    foundDependency = true;
+
+                            if (!foundDependency)
+                                deps.push_back(SubpassDependency(
+                                    subpassIndex - 1, subpassIndex, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0u, 0u, 0u));
+                        }
+
                         // Use random image layout when possible
                         for (size_t colorRefIdx = 0; colorRefIdx < colorAttachmentReferences.size(); ++colorRefIdx)
                         {
