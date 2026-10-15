@@ -8347,6 +8347,23 @@ tcu::TestStatus sparseImageFormatProperties2(Context &context, const VkFormat fo
                 curUsageFlags,
             };
 
+            // The sample count must be one the image format properties report for this usage
+            const VkPhysicalDeviceImageFormatInfo2 formatInfo = {
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+                extendedFlags ? &usageFlags2 : nullptr,
+                format,
+                imageType,
+                tiling,
+                curUsageFlags,
+                0u,
+            };
+            VkImageFormatProperties2 formatProperties = initVulkanStructure();
+
+            if (vki.getPhysicalDeviceImageFormatProperties2(physicalDevice, &formatInfo, &formatProperties) !=
+                    VK_SUCCESS ||
+                (formatProperties.imageFormatProperties.sampleCounts & sampleCountBit) == 0)
+                continue;
+
             const VkPhysicalDeviceSparseImageFormatInfo2 extendedUsageIimageFormatInfo = {
                 VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2,
                 &usageFlags2,
