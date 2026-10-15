@@ -3638,7 +3638,8 @@ void SingleAttachmentTestInstance::iterateInternalDynamicRendering(void)
             if (m_groupParams->secondaryCmdBufferCompletelyContainsDynamicRenderpass)
             {
                 beginSecondaryCmdBuffer(vkd, *secCmdBuffer[1], m_format, VK_FORMAT_UNDEFINED, true);
-                beginRendering(vkd, *secCmdBuffer[1], *m_imageViewResult, renderArea, clearValue);
+                beginRendering(vkd, *secCmdBuffer[1], *m_imageViewResult, renderArea, clearValue,
+                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
             }
             else
                 beginSecondaryCmdBuffer(vkd, *secCmdBuffer[1], m_format, VK_FORMAT_UNDEFINED, false);
@@ -3669,8 +3670,9 @@ void SingleAttachmentTestInstance::iterateInternalDynamicRendering(void)
 
         if (!m_groupParams->secondaryCmdBufferCompletelyContainsDynamicRenderpass)
         {
-            beginRendering(vkd, *cmdBuffer, *m_imageViewResult, renderArea, clearValue, VK_IMAGE_LAYOUT_GENERAL,
-                           VK_ATTACHMENT_LOAD_OP_LOAD, VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT);
+            beginRendering(vkd, *cmdBuffer, *m_imageViewResult, renderArea, clearValue,
+                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD,
+                           VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT);
         }
         vkd.cmdExecuteCommands(*cmdBuffer, 1u, &*secCmdBuffer[1]);
         if (!m_groupParams->secondaryCmdBufferCompletelyContainsDynamicRenderpass)
@@ -3691,7 +3693,8 @@ void SingleAttachmentTestInstance::iterateInternalDynamicRendering(void)
 
         inbetweenDrawsRenderBarriers(*cmdBuffer);
 
-        beginRendering(vkd, *cmdBuffer, *m_imageViewResult, renderArea, clearValue);
+        beginRendering(vkd, *cmdBuffer, *m_imageViewResult, renderArea, clearValue,
+                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         drawThatSamplesPreviousResult(*cmdBuffer);
         vkd.cmdEndRendering(*cmdBuffer);
 
