@@ -4109,6 +4109,7 @@ struct MultiSampleThenSingleSampleParams
 void checkQueueSupport(Context &context, MultiSampleThenSingleSampleParams params)
 {
     const auto &testGroupParams = params.testGroupParams;
+    checkExtensionSupport(context, testGroupParams->extensionFlags);
     if (testGroupParams->queueSelection == QueueSelectionOptions::ComputeOnly)
         context.getComputeQueue();
     else if (testGroupParams->queueSelection == QueueSelectionOptions::TransferOnly)
