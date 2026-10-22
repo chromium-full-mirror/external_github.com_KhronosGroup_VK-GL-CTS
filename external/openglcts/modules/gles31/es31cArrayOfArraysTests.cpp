@@ -1040,8 +1040,10 @@ tcu::TestNode::IterateResult TestCaseBase<API>::limit_active_shader_storage_bloc
         gl.getIntegerv(GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS, &res);
         if (static_cast<size_t>(res) < num)
         {
-            tcu::NotSupportedError(
-                "The number of active vertex shader storage blocks exceeds implementation-dependent limits.");
+            context_id.getTestContext().getLog()
+                << tcu::TestLog::Message
+                << "The number of active vertex shader storage blocks exceeds implementation-dependent limits."
+                << tcu::TestLog::EndMessage;
             return STOP;
         }
         break;
@@ -1049,8 +1051,10 @@ tcu::TestNode::IterateResult TestCaseBase<API>::limit_active_shader_storage_bloc
         gl.getIntegerv(GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS, &res);
         if (static_cast<size_t>(res) < num)
         {
-            tcu::NotSupportedError(
-                "The number of active TC shader storage blocks exceeds implementation-dependent limits.");
+            context_id.getTestContext().getLog()
+                << tcu::TestLog::Message
+                << "The number of active TC shader storage blocks exceeds implementation-dependent limits."
+                << tcu::TestLog::EndMessage;
             return STOP;
         }
         break;
@@ -1058,8 +1062,10 @@ tcu::TestNode::IterateResult TestCaseBase<API>::limit_active_shader_storage_bloc
         gl.getIntegerv(GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS, &res);
         if (static_cast<size_t>(res) < num)
         {
-            tcu::NotSupportedError(
-                "The number of active TE shader storage blocks exceeds implementation-dependent limits.");
+            context_id.getTestContext().getLog()
+                << tcu::TestLog::Message
+                << "The number of active TE shader storage blocks exceeds implementation-dependent limits."
+                << tcu::TestLog::EndMessage;
             return STOP;
         }
         break;
@@ -1067,8 +1073,10 @@ tcu::TestNode::IterateResult TestCaseBase<API>::limit_active_shader_storage_bloc
         gl.getIntegerv(GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS, &res);
         if (static_cast<size_t>(res) < num)
         {
-            tcu::NotSupportedError(
-                "The number of active geometry shader storage blocks exceeds implementation-dependent limits.");
+            context_id.getTestContext().getLog()
+                << tcu::TestLog::Message
+                << "The number of active geometry shader storage blocks exceeds implementation-dependent limits."
+                << tcu::TestLog::EndMessage;
             return STOP;
         }
         break;
