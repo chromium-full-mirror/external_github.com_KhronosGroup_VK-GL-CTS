@@ -951,7 +951,7 @@ void GeometryShaderAdjacencyTests::setLineStripPointsIndiced(AdjacencyTestData &
         ++travellerIndicesPtr;
     }
 
-    for (unsigned int n = 0; n < test_data.m_n_vertices - 3; ++n)
+    for (unsigned int n = 0; n + 3 < test_data.m_n_vertices; ++n)
     {
         AdjacencyGridPoint *pointN0 = test_data.m_grid->m_line_strip.m_points + test_data.m_index_data[n];
         AdjacencyGridPoint *pointN1 = test_data.m_grid->m_line_strip.m_points + test_data.m_index_data[n + 1];
