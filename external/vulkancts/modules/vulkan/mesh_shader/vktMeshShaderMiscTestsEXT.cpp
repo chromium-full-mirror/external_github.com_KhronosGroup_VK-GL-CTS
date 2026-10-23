@@ -1475,18 +1475,24 @@ void NoPrimitivesCase::initPrograms(vk::SourceCollections &programCollection) co
     programCollection.glslSources.add("mesh") << glu::MeshSource(mesh.str()) << buildOptions;
 }
 
-class NoPrimitivesExtraWritesCase : public NoPrimitivesCase
+class NoPrimitivesExtraWritesCase : public MeshShaderMiscCase
 {
 public:
     NoPrimitivesExtraWritesCase(tcu::TestContext &testCtx, const std::string &name, ParamsPtr params)
-        : NoPrimitivesCase(testCtx, name, std::move(params))
+        : MeshShaderMiscCase(testCtx, name, std::move(params))
     {
     }
 
     void initPrograms(vk::SourceCollections &programCollection) const override;
+    TestInstance *createInstance(Context &context) const override;
 
     static constexpr uint32_t kLocalInvocations = 128u;
 };
+
+TestInstance *NoPrimitivesExtraWritesCase::createInstance(Context &context) const
+{
+    return new NoPrimitivesInstance(context, m_params.get());
+}
 
 void NoPrimitivesExtraWritesCase::initPrograms(vk::SourceCollections &programCollection) const
 {
@@ -6598,9 +6604,10 @@ tcu::TestCaseGroup *createMeshShaderMiscTestsEXT(tcu::TestContext &testCtx)
                 const auto primName    = primitiveTypeName(primType);
                 const std::string name = "no_" + primName + (extraWrites ? "_extra_writes" : "");
 
-                miscTests->addChild(extraWrites ?
-                                        (new NoPrimitivesExtraWritesCase(testCtx, name, std::move(paramsPtr))) :
-                                        (new NoPrimitivesCase(testCtx, name, std::move(paramsPtr))));
+                if (extraWrites)
+                    miscTests->addChild(new NoPrimitivesExtraWritesCase(testCtx, name, std::move(paramsPtr)));
+                else
+                    miscTests->addChild(new NoPrimitivesCase(testCtx, name, std::move(paramsPtr)));
             }
         }
     }

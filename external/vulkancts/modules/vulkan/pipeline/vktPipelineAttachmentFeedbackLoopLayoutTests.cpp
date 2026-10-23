@@ -1621,7 +1621,7 @@ tcu::TestStatus AttachmentFeedbackLoopLayoutDepthStencilImageSamplingInstance::v
         (m_interleaveReadWriteComponents && (m_subresourceRange.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT));
     // ImageSamplingInstance::verifyImage() doesn't support stencil sampling.
     if (!m_useImageAsColorOrDSAttachment && !isStencil)
-        return ImageSamplingInstance::verifyImage(useGeneralLayout);
+        return AttachmentFeedbackLoopLayoutImageSamplingInstance::verifyImage(useGeneralLayout);
 
     const tcu::Vec4 fThreshold(0.005f);
     const tcu::UVec4 uThreshold(
