@@ -584,7 +584,7 @@ class ContextManager
 #endif // CTS_USES_VULKANSC
     const vk::VkPhysicalDevice m_physicalDevice;
     const uint32_t m_deviceVersion;
-    const uint32_t m_usedApiVersion; // Device supported version without patch number
+    const uint32_t m_usedApiVersion; // Lower of the instance and device versions, without patch number
     const int m_maxCustomDevices;
     const std::vector<std::string> m_deviceExtensions;
     const std::vector<const char *> m_creationExtensions;

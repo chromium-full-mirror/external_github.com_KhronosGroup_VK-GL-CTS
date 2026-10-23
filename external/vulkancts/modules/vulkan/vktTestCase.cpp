@@ -699,7 +699,7 @@ private:
 #endif // CTS_USES_VULKANSC
     const VkPhysicalDevice m_physicalDevice;
     const uint32_t m_deviceVersion;
-    const uint32_t m_usedApiVersion; // Device supported version without patch number
+    const uint32_t m_usedApiVersion; // Lower of the instance and device versions, without patch number
 
     const vector<string> m_deviceExtensions;
     const de::SharedPtr<DeviceFeatures> m_deviceFeaturesPtr;
@@ -838,7 +838,7 @@ ContextManager::ContextManager(const PlatformInterface &vkPlatform, const tcu::C
     , m_physicalDevice(icaps.selectDevice(*m_instanceInterface, *m_instance, commandLine,
                                           chooseDevice(*m_instanceInterface, *m_instance, m_commandLine)))
     , m_deviceVersion(getPhysicalDeviceProperties(*m_instanceInterface, m_physicalDevice).apiVersion)
-    , m_usedApiVersion(sanitizeApiVersion(m_deviceVersion))
+    , m_usedApiVersion(sanitizeApiVersion(minVulkanAPIVersion(m_usedInstanceVersion, m_deviceVersion)))
 #ifdef CTS_USES_VULKANSC
     // Force max custom devices to 1 on Vulkan SC as some implementations only support one logical device per instance
     // and also have low system-wide instance count limits (e.g. 4) that are just barely enough to support the
