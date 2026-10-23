@@ -18061,7 +18061,7 @@ bool compareFP16ArithmeticFunc(const std::vector<Resource> &inputs, const vector
                         tcu::Float64 edgeMin(iterationEdgeMin[componentNdx]);
                         tcu::Float64 edgeMax(iterationEdgeMax[componentNdx]);
 
-                        if (reportError && expected.isNaN())
+                        if (expected.isNaN())
                             reportError = false;
 
                         if (reportError && !expected.isNaN() && !outputted.isNaN())
