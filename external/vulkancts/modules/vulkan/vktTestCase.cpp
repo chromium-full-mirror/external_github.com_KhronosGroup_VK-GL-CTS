@@ -866,7 +866,7 @@ DefaultDevice::DefaultDevice(const PlatformInterface &vkPlatform, const tcu::Com
 #endif // CTS_USES_VULKANSC
     , m_physicalDevice(m_contextManager->getPhysicalDevice())
     , m_deviceVersion(m_contextManager->getDeviceVersion())
-    , m_deviceExtensions((deviceID != DevCaps::DefDevId) ? *pDeviceExtensions : m_contextManager->getDeviceExtensions())
+    , m_deviceExtensions(pDeviceExtensions ? *pDeviceExtensions : m_contextManager->getDeviceExtensions())
     , m_deviceFeaturesPtr(m_contextManager->getDeviceFeaturesPtr())
     , m_deviceFeatures(*m_deviceFeaturesPtr)
     , m_universalQueueFamilyIndex(findQueueFamilyIndexWithCaps(
