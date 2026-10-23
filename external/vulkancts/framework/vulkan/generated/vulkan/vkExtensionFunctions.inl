@@ -875,6 +875,10 @@ void getInstanceExtensionFunctions (uint32_t apiVersion, const std::vector<std::
 	{
 		return;
 	}
+	if (extName == "VK_GOOGLE_hdr_smpte_st_209450_metadata")
+	{
+		return;
+	}
 	if (extName == "VK_GOOGLE_hlsl_functionality1")
 	{
 		return;
@@ -3275,6 +3279,10 @@ void getDeviceExtensionFunctions (uint32_t apiVersion, const std::vector<std::st
 		functions.push_back("vkGetPastPresentationTimingGOOGLE");
 		return;
 	}
+	if (extName == "VK_GOOGLE_hdr_smpte_st_209450_metadata")
+	{
+		return;
+	}
 	if (extName == "VK_GOOGLE_hlsl_functionality1")
 	{
 		return;
@@ -5191,6 +5199,7 @@ void getDeviceExtensionFunctions (uint32_t apiVersion, const std::vector<std::st
 	"VK_NV_private_data_base_handle",
 	"VK_INTEL_device_info",
 	"VK_VALVE_buffer_device_address_allocation_alignment",
+	"VK_GOOGLE_hdr_smpte_st_209450_metadata",
 	"VK_KHR_acceleration_structure",
 	"VK_KHR_ray_tracing_pipeline",
 	"VK_KHR_ray_query",

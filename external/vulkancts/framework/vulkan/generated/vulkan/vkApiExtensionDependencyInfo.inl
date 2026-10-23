@@ -2358,6 +2358,18 @@ bool check_VK_GOOGLE_display_timing(const tcu::UVec2& v, const ExtPropVect& vIEP
 	return isSupported(vDEP, "VK_KHR_swapchain");
 }
 
+bool check_VK_GOOGLE_hdr_smpte_st_209450_metadata(const tcu::UVec2& v, const ExtPropVect& vIEP, const ExtPropVect& vDEP)
+{
+	DE_UNREF(v);
+	DE_UNREF(vIEP);
+
+	if (!isSupported(vDEP, "VK_GOOGLE_hdr_smpte_st_209450_metadata"))
+		return true;
+
+	// depends attribute in xml: (VK_KHR_get_physical_device_properties2,VK_VERSION_1_1)+VK_KHR_get_surface_capabilities2+VK_KHR_swapchain+VK_EXT_hdr_metadata
+	return ((isSupported(vIEP, "VK_KHR_get_physical_device_properties2") || isCompatible(1, 1, v)) && isSupported(vIEP, "VK_KHR_get_surface_capabilities2") && isSupported(vDEP, "VK_KHR_swapchain") && isSupported(vDEP, "VK_EXT_hdr_metadata"));
+}
+
 bool check_VK_HUAWEI_cluster_culling_shader(const tcu::UVec2& v, const ExtPropVect& vIEP, const ExtPropVect& vDEP)
 {
 	DE_UNREF(v);
@@ -5088,6 +5100,7 @@ static const DependencyCheckVect deviceExtensionDependencies
 	std::make_pair("VK_FUCHSIA_external_semaphore",							&check_VK_FUCHSIA_external_semaphore),
 	std::make_pair("VK_GGP_frame_token",										&check_VK_GGP_frame_token),
 	std::make_pair("VK_GOOGLE_display_timing",								&check_VK_GOOGLE_display_timing),
+	std::make_pair("VK_GOOGLE_hdr_smpte_st_209450_metadata",					&check_VK_GOOGLE_hdr_smpte_st_209450_metadata),
 	std::make_pair("VK_HUAWEI_cluster_culling_shader",						&check_VK_HUAWEI_cluster_culling_shader),
 	std::make_pair("VK_HUAWEI_hdr_vivid",									&check_VK_HUAWEI_hdr_vivid),
 	std::make_pair("VK_HUAWEI_invocation_mask",								&check_VK_HUAWEI_invocation_mask),
@@ -5511,6 +5524,7 @@ static const std::tuple<uint32_t, uint32_t, const char*>	extensionRequiredCoreVe
 	std::make_tuple(1, 0, "VK_GGP_stream_descriptor_surface"),
 	std::make_tuple(1, 0, "VK_GOOGLE_decorate_string"),
 	std::make_tuple(1, 0, "VK_GOOGLE_display_timing"),
+	std::make_tuple(1, 0, "VK_GOOGLE_hdr_smpte_st_209450_metadata"),
 	std::make_tuple(1, 0, "VK_GOOGLE_hlsl_functionality1"),
 	std::make_tuple(1, 0, "VK_GOOGLE_surfaceless_query"),
 	std::make_tuple(1, 0, "VK_GOOGLE_user_type"),
