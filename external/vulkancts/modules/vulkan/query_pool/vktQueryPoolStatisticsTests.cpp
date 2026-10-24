@@ -4837,6 +4837,7 @@ tcu::TestStatus VertexShaderMultipleQueryTestInstance::checkResult(VkQueryPool q
         while (queryMask)
         {
             int32_t statisticBit = deInt32BitScan(&queryMask);
+            DE_ASSERT(statisticBit < 32); // queryMask is not zero
             uint64_t expectedMin = calculateExpectedMin((1u << statisticBit));
             uint64_t expectedMax = calculateExpectedMax((1u << statisticBit));
 
