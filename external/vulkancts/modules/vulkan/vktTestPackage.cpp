@@ -389,14 +389,25 @@ TestCaseExecutor::TestCaseExecutor(tcu::TestContext &testCtx)
     // the deviceVersion field, as it will have the same content for each newly created instance.
     // The created copy of m_defaultInstCaps will then be passed to the findCustomManager() function,
     // which creates a new instance based on the result of the TestCase::getInstanceCapabilitiesId() method.
-    const InstCaps defaultInstCaps(m_library->getPlatformInterface(), testCtx.getCommandLine(), InstCaps::DefInstId,
-                                   nullptr, nullptr, false);
-    m_defaultInstCaps = SharedPtr(new InstCaps(m_library->getPlatformInterface(), testCtx.getCommandLine(),
-                                               InstCaps::DefInstId, nullptr, &defaultInstCaps, false));
+    const InstCaps defaultInstCaps(m_library->getPlatformInterface(), InstCaps::DefInstId, nullptr, nullptr);
+    m_defaultInstCaps =
+        SharedPtr(new InstCaps(m_library->getPlatformInterface(), InstCaps::DefInstId, nullptr, &defaultInstCaps));
     const int maxCustomDevices =
         std::clamp(testCtx.getCommandLine().getMaxCustomDevices(), 1, std::numeric_limits<int>::max());
     m_defaultContextManager = ContextManager::create(m_library->getPlatformInterface(), testCtx.getCommandLine(),
                                                      m_resourceInterface, maxCustomDevices, *m_defaultInstCaps);
+
+#ifdef CTS_USES_VULKANSC
+    if (testCtx.getCommandLine().isSubProcess())
+    {
+        // Import pipeline cache data at a single point where the resource interface is also initialized as it
+        // is a global singleton and therefore the import should only happen once
+        m_resourceInterface->importPipelineCacheData(
+            m_defaultContextManager->getPlatformInterface(), *m_defaultContextManager->getInstance(),
+            *m_defaultContextManager->getInstanceDriver(), m_defaultContextManager->getPhysicalDevice());
+    }
+#endif
+
     m_defaultContextManager->createDefaultDevice(m_defaultContextManager, m_progCollection, testCtx);
 
     m_deviceProperties = getPhysicalDeviceProperties(m_defaultContextManager);
@@ -437,7 +448,7 @@ TestCaseExecutor::TestCaseExecutor(tcu::TestContext &testCtx)
     }
 
 #ifdef CTS_USES_VULKANSC
-    m_resourceInterface->initApiVersion(defaultInstCaps.usedApiVersion);
+    m_resourceInterface->initApiVersion(defaultInstCaps.usedInstanceVersion);
 
     // Real Vulkan SC tests are performed in subprocess.
     // Tests run in main process are only used to collect data required by Vulkan SC.

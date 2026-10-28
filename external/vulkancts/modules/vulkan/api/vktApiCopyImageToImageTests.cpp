@@ -4121,8 +4121,7 @@ struct MultiSampleThenSingleSampleParams
 void checkQueueSupport(Context &context, MultiSampleThenSingleSampleParams params)
 {
     const auto &testGroupParams = params.testGroupParams;
-    if (testGroupParams->extensionFlags & COPY_COMMANDS_2)
-        context.requireDeviceFunctionality("VK_KHR_copy_commands2");
+    checkExtensionSupport(context, testGroupParams->extensionFlags);
     if (testGroupParams->queueSelection == QueueSelectionOptions::ComputeOnly)
         context.getComputeQueue();
     else if (testGroupParams->queueSelection == QueueSelectionOptions::TransferOnly)

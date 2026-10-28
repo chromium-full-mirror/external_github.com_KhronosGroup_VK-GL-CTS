@@ -208,28 +208,6 @@ uint32_t getTargetInstanceVersion(const PlatformInterface &vkp)
     return version;
 }
 
-std::pair<uint32_t, uint32_t> determineDeviceVersions(const PlatformInterface &vkp, uint32_t apiVersion,
-                                                      const tcu::CommandLine &cmdLine)
-{
-    Move<VkInstance> preinstance = createDefaultInstance(vkp, apiVersion, cmdLine);
-    InstanceDriver preinterface(vkp, preinstance.get());
-
-    const vector<VkPhysicalDevice> devices = enumeratePhysicalDevices(preinterface, preinstance.get());
-    uint32_t lowestDeviceVersion           = 0xFFFFFFFFu;
-    for (uint32_t deviceNdx = 0u; deviceNdx < devices.size(); ++deviceNdx)
-    {
-        const VkPhysicalDeviceProperties props = getPhysicalDeviceProperties(preinterface, devices[deviceNdx]);
-        if (props.apiVersion < lowestDeviceVersion)
-            lowestDeviceVersion = props.apiVersion;
-    }
-
-    const vk::VkPhysicalDevice choosenDevice = chooseDevice(preinterface, *preinstance, cmdLine);
-    const VkPhysicalDeviceProperties props   = getPhysicalDeviceProperties(preinterface, choosenDevice);
-    const uint32_t choosenDeviceVersion      = props.apiVersion;
-
-    return std::make_pair(choosenDeviceVersion, lowestDeviceVersion);
-}
-
 // Remove extensions from a which are found in b.
 vector<string> removeExtensions(const vector<string> &a, const vector<const char *> &b)
 {
@@ -413,8 +391,6 @@ Move<VkDevice> createDefaultDevice(const PlatformInterface &vkp, VkInstance inst
     std::vector<VkPipelinePoolSize> poolSizes;
     if (cmdLine.isSubProcess())
     {
-        resourceInterface->importPipelineCacheData(vkp, instance, vki, physicalDevice, universalQueueIndex);
-
         dmrCI = resourceInterface->getStatMax();
 
         if (resourceInterface->getCacheDataSize() > 0)
@@ -722,9 +698,6 @@ private:
     const uint32_t m_availableInstanceVersion;
     const uint32_t m_usedInstanceVersion;
 
-    const std::pair<uint32_t, uint32_t> m_deviceVersions;
-    const uint32_t m_usedApiVersion;
-
 #ifndef CTS_USES_VULKANSC
     const DebugReportRecorderPtr m_debugReportRecorder;
     std::set<vk::DebugReportRecorder *> m_externalDebugReportRecorders;
@@ -741,6 +714,7 @@ private:
 #endif // CTS_USES_VULKANSC
     const VkPhysicalDevice m_physicalDevice;
     const uint32_t m_deviceVersion;
+    const uint32_t m_usedApiVersion; // Lower of the instance and device versions, without patch number
 
     const vector<string> m_deviceExtensions;
     const de::SharedPtr<DeviceFeatures> m_deviceFeaturesPtr;
@@ -816,29 +790,28 @@ vector<const char *> removeCoreExtensions(const uint32_t apiVersion, const vecto
 
 } // namespace
 
-InstCaps::InstCaps(const PlatformInterface &vkPlatform, const tcu::CommandLine &commandLine, const std::string &id_,
-                   vkt::TestCase *testCase, const InstCaps *hint, bool dontCreateDefaultDeviceFlag)
+InstCaps::InstCaps(const PlatformInterface &vkPlatform, const std::string &id_, vkt::TestCase *testCase,
+                   const InstCaps *hint)
 #ifndef CTS_USES_VULKANSC
     : maximumFrameworkVulkanVersion(VK_API_MAX_FRAMEWORK_VERSION)
 #else
     : maximumFrameworkVulkanVersion(VKSC_API_MAX_FRAMEWORK_VERSION)
 #endif // CTS_USES_VULKANSC
     , availableInstanceVersion(hint ? hint->availableInstanceVersion : getTargetInstanceVersion(vkPlatform))
-    , usedInstanceVersion(
-          hint ? hint->usedInstanceVersion :
-                 sanitizeApiVersion(minVulkanAPIVersion(availableInstanceVersion, maximumFrameworkVulkanVersion)))
-    , deviceVersions(hint ? hint->deviceVersions :
-                            determineDeviceVersions(vkPlatform, usedInstanceVersion, commandLine))
-    , usedApiVersion(hint ? hint->usedApiVersion :
-                            sanitizeApiVersion(minVulkanAPIVersion(usedInstanceVersion, deviceVersions.first)))
+    , usedInstanceVersion(hint ? hint->usedInstanceVersion :
+                                 // Always use the max framework supported version except when only Vulkan 1.0 is
+                                 // supported as the spec requires the requested instance version to be exactly
+                                 // 1.0 in that case
+                                 sanitizeApiVersion(availableInstanceVersion < VK_API_VERSION_1_1 ?
+                                                        VK_API_VERSION_1_0 :
+                                                        maximumFrameworkVulkanVersion))
     , coreExtensions(
           hint ? hint->coreExtensions :
                  addCoreInstanceExtensions(filterExtensions(enumerateInstanceExtensionProperties(vkPlatform, nullptr)),
-                                           usedApiVersion))
+                                           usedInstanceVersion))
     , id(id_)
     , m_extensions()
     , m_destroyAllDevices({false, false})
-    , m_dontCreateDefaultDevice(dontCreateDefaultDeviceFlag)
     , m_shouldRemoveInstanceOnTestExit(false)
     , m_testCase(testCase)
 {
@@ -855,8 +828,6 @@ ContextManager::ContextManager(const PlatformInterface &vkPlatform, const tcu::C
     , m_resourceInterface(resourceInterface)
     , m_availableInstanceVersion(icaps.availableInstanceVersion)
     , m_usedInstanceVersion(icaps.usedInstanceVersion)
-    , m_deviceVersions(icaps.deviceVersions)
-    , m_usedApiVersion(icaps.usedApiVersion)
     , m_instanceExtensions(icaps.getExtensions())
 #ifndef CTS_USES_VULKANSC
     , m_debugReportRecorder(m_commandLine.isValidationEnabled() ?
@@ -866,10 +837,10 @@ ContextManager::ContextManager(const PlatformInterface &vkPlatform, const tcu::C
     , m_instanceHandle(VK_NULL_HANDLE)
 #ifdef CTS_USES_VULKANSC
     , m_instance(
-          createSharedInstance(m_instanceHandle, vkPlatform, m_usedApiVersion, m_instanceExtensions, commandLine))
+          createSharedInstance(m_instanceHandle, vkPlatform, m_usedInstanceVersion, m_instanceExtensions, commandLine))
     , m_instanceInterface(new InstanceDriverSC(vkPlatform, *m_instance, commandLine, resourceInterface))
 #else
-    , m_instance(createSharedInstance(m_instanceHandle, vkPlatform, m_usedApiVersion, m_instanceExtensions,
+    , m_instance(createSharedInstance(m_instanceHandle, vkPlatform, m_usedInstanceVersion, m_instanceExtensions,
                                       m_commandLine, m_debugReportRecorder.get()))
     , m_instanceInterface(new InstanceDriver(vkPlatform, *m_instance))
     , m_debugReportCallbackHandle(VK_NULL_HANDLE)
@@ -882,7 +853,15 @@ ContextManager::ContextManager(const PlatformInterface &vkPlatform, const tcu::C
     , m_physicalDevice(icaps.selectDevice(*m_instanceInterface, *m_instance, commandLine,
                                           chooseDevice(*m_instanceInterface, *m_instance, m_commandLine)))
     , m_deviceVersion(getPhysicalDeviceProperties(*m_instanceInterface, m_physicalDevice).apiVersion)
+    , m_usedApiVersion(sanitizeApiVersion(minVulkanAPIVersion(m_usedInstanceVersion, m_deviceVersion)))
+#ifdef CTS_USES_VULKANSC
+    // Force max custom devices to 1 on Vulkan SC as some implementations only support one logical device per instance
+    // and also have low system-wide instance count limits (e.g. 4) that are just barely enough to support the
+    // parent-child process model of the Vulkan SC CTS
+    , m_maxCustomDevices(1)
+#else
     , m_maxCustomDevices(maxCustomDevices)
+#endif
     , m_deviceExtensions(addCoreDeviceExtensions(
           filterExtensions(enumerateDeviceExtensionProperties(*m_instanceInterface, m_physicalDevice, nullptr)),
           m_usedApiVersion))
@@ -895,10 +874,17 @@ ContextManager::ContextManager(const PlatformInterface &vkPlatform, const tcu::C
     , m_contexts()
     , m_customManagers()
     , m_destroyAllDevices(icaps.getDestroyAllDevices())
-    , m_dontCreateDefaultDevice(icaps.dontCreateDefaultDevice())
+#ifdef CTS_USES_VULKANSC
+    // Always destroy instance on Vulkan SC for the same reason we force a max custom device count of 1 (see above)
+    , m_shouldBeRemovedOnTestExit(true)
+#else
     , m_shouldBeRemovedOnTestExit(icaps.shouldRemoveInstanceOnTestExit())
+#endif // CTS_USES_VULKANSC
     , id(icaps.id)
 {
+#ifdef CTS_USES_VULKANSC
+    DE_UNREF(maxCustomDevices);
+#endif
     m_contexts.reserve(m_maxCustomDevices + 1);
 }
 
@@ -917,8 +903,6 @@ DefaultDevice::DefaultDevice(const PlatformInterface &vkPlatform, const tcu::Com
     , m_maximumFrameworkVulkanVersion(m_contextManager->getMaximumFrameworkVulkanVersion())
     , m_availableInstanceVersion(m_contextManager->getAvailableInstanceVersion())
     , m_usedInstanceVersion(m_contextManager->getUsedInstanceVersion())
-    , m_deviceVersions(m_contextManager->getDeviceVersions())
-    , m_usedApiVersion(m_contextManager->getUsedApiVersion())
 #ifndef CTS_USES_VULKANSC
     , m_debugReportRecorder(m_contextManager->getDebugReportRecorder())
 #endif // CTS_USES_VULKANSC
@@ -932,6 +916,7 @@ DefaultDevice::DefaultDevice(const PlatformInterface &vkPlatform, const tcu::Com
 #endif // CTS_USES_VULKANSC
     , m_physicalDevice(m_contextManager->getPhysicalDevice())
     , m_deviceVersion(m_contextManager->getDeviceVersion())
+    , m_usedApiVersion(m_contextManager->getUsedApiVersion())
     , m_deviceExtensions((deviceID != DevCaps::DefDevId) ? *pDeviceExtensions : m_contextManager->getDeviceExtensions())
     , m_deviceFeaturesPtr(m_contextManager->getDeviceFeaturesPtr())
     , m_deviceFeatures(*m_deviceFeaturesPtr)
@@ -971,7 +956,6 @@ DefaultDevice::DefaultDevice(const PlatformInterface &vkPlatform, const tcu::Com
 #endif // CTS_USES_VULKANSC
     , m_deviceID(deviceID)
 {
-    DE_ASSERT(m_deviceVersions.first == m_deviceVersion);
     m_embeddedContextManager = false;
 }
 
@@ -1030,7 +1014,7 @@ Context::Context(tcu::TestContext &testCtx, const vk::PlatformInterface &platfor
     , m_contextManagerPtr(ContextManager::create(
           platformInterface, testCtx.getCommandLine(), resourceInterface,
           std::clamp(testCtx.getCommandLine().getMaxCustomDevices(), 1, std::numeric_limits<int>::max()),
-          InstCaps(platformInterface, testCtx.getCommandLine())))
+          InstCaps(platformInterface)))
     , m_contextManager(m_contextManagerPtr)
     , m_progCollection(progCollection)
     , m_resourceInterface(resourceInterface)
