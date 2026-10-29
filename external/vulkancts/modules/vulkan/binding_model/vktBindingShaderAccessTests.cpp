@@ -7435,17 +7435,19 @@ std::string ImageDescriptorCase::genResourceDeclarations(vk::VkShaderStageFlagBi
 
     // Vulkan-style resources are arrays implicitly, OpenGL-style are not
     const std::string dimensionBase =
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D_ARRAY)     ? ("1D") :
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D_ARRAY)     ? ("2D") :
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_3D)                                                      ? ("3D") :
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE || m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) ? ("Cube") :
-                                                                                                         (nullptr);
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D_ARRAY) ? ("1D") :
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D_ARRAY) ? ("2D") :
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_3D)                                                  ? ("3D") :
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE || m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) ?
+                                                    ("Cube") :
+                                                    TCU_THROW(InternalError, "Unexpected image view type");
     const std::string dimensionArray =
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D_ARRAY)     ? ("1DArray") :
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D_ARRAY)     ? ("2DArray") :
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_3D)                                                      ? ("3D") :
-        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE || m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) ? ("CubeArray") :
-                                                                                                         (nullptr);
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_1D_ARRAY) ? ("1DArray") :
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D || m_viewType == vk::VK_IMAGE_VIEW_TYPE_2D_ARRAY) ? ("2DArray") :
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_3D)                                                  ? ("3D") :
+        (m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE || m_viewType == vk::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) ?
+                                                    ("CubeArray") :
+                                                    TCU_THROW(InternalError, "Unexpected image view type");
     const std::string dimension = isImageViewTypeArray(m_viewType) ? dimensionArray : dimensionBase;
     const uint32_t numSets      = getDescriptorSetCount(m_descriptorSetCount);
 

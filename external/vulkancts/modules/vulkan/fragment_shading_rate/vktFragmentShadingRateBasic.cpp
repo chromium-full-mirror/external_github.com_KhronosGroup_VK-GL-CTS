@@ -831,6 +831,7 @@ TestInstance *FSRTestCase::createInstance(Context &context) const
 
 int32_t FSRTestInstance::ShadingRateExtentToEnum(VkExtent2D ext) const
 {
+    DE_ASSERT(ext.width != 0 && ext.height != 0);
     ext.width  = deCtz32(ext.width);
     ext.height = deCtz32(ext.height);
 
