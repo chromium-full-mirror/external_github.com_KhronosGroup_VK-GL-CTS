@@ -3344,6 +3344,7 @@ tcu::TestStatus ClipInstance::iterate()
     {
         const tcu::ConstPixelBufferAccess verificationAccess1(tcuFormat, iExtent, verificationBuffer1Data);
 
+        DE_ASSERT(verificationBuffer1Alloc);
         invalidateAlloc(vkd, device, *verificationBuffer1Alloc);
 
         if (!verifyResult(verificationAccess1))
