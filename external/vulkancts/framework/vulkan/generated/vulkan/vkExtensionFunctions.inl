@@ -1200,6 +1200,10 @@ void getInstanceExtensionFunctions (uint32_t apiVersion, const std::vector<std::
 	{
 		return;
 	}
+	if (extName == "VK_KHR_maintenance12")
+	{
+		return;
+	}
 	if (extName == "VK_KHR_maintenance2")
 	{
 		return;
@@ -3723,6 +3727,10 @@ void getDeviceExtensionFunctions (uint32_t apiVersion, const std::vector<std::st
 	{
 		return;
 	}
+	if (extName == "VK_KHR_maintenance12")
+	{
+		return;
+	}
 	if (extName == "VK_KHR_maintenance2")
 	{
 		return;
@@ -4898,6 +4906,7 @@ void getDeviceExtensionFunctions (uint32_t apiVersion, const std::vector<std::st
 	"VK_KHR_pipeline_library_group_handles",
 	"VK_KHR_maintenance11",
 	"VK_KHR_extended_flags",
+	"VK_KHR_maintenance12",
 	"VK_NV_glsl_shader",
 	"VK_EXT_depth_range_unrestricted",
 	"VK_IMG_filter_cubic",
