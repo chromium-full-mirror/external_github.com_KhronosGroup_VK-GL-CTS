@@ -417,7 +417,7 @@ struct EncodeTestParam
 {
     TestType type;
     ClipName clip;
-    uint32_t gops;
+    uint16_t gops;
     std::vector<FrameType> encodePattern;
     std::vector<uint32_t> frameIdx;
     std::vector<uint32_t> FrameNum;
@@ -1193,7 +1193,7 @@ public:
         return &m_profile;
     }
 
-    uint32_t gopCount() const
+    uint16_t gopCount() const
     {
         return m_params.gops;
     }
@@ -1726,7 +1726,7 @@ private:
     // Test configuration
     VkVideoCodecOperationFlagBitsKHR m_videoCodecEncodeOperation;
     VkVideoCodecOperationFlagBitsKHR m_videoCodecDecodeOperation;
-    uint32_t m_gopCount;
+    uint16_t m_gopCount;
     uint32_t m_gopFrameCount;
     uint32_t m_dpbSlots;
     VkExtent2D m_codedExtent;
@@ -2584,7 +2584,7 @@ void VideoEncodeTestInstance::prepareDPBResources(void)
         m_separateReferenceImages ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 
     // Create DPB images
-    for (uint8_t i = 0; i < (m_separateReferenceImages ? m_dpbSlots : 1); ++i)
+    for (uint32_t i = 0; i < (m_separateReferenceImages ? m_dpbSlots : 1); ++i)
     {
         std::unique_ptr<ImageWithMemory> dpbImage(new ImageWithMemory(
             *m_videoDeviceDriver, m_videoEncodeDevice, getAllocator(), dpbImageCreateInfo, MemoryRequirement::Any));
@@ -2592,7 +2592,7 @@ void VideoEncodeTestInstance::prepareDPBResources(void)
     }
 
     // Create reference info structures
-    for (uint8_t i = 0, j = 0; i < m_gopFrameCount; ++i)
+    for (uint32_t i = 0, j = 0; i < m_gopFrameCount; ++i)
     {
         if (m_testDefinition->frameType(i) == B_FRAME)
             continue;
@@ -2610,7 +2610,7 @@ void VideoEncodeTestInstance::prepareDPBResources(void)
     }
 
     // Create picture resources and reference slots
-    for (uint8_t i = 0, j = 0; i < m_gopFrameCount; ++i)
+    for (uint32_t i = 0, j = 0; i < m_gopFrameCount; ++i)
     {
         if (m_testDefinition->frameType(i) == B_FRAME)
             continue;
