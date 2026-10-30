@@ -2173,7 +2173,7 @@ tcu::TestStatus CustomResolveInstance::iterate(void)
             colorAttCounts.insert(colorAttachmentCount);
 
             resolveInputAttachmentIndexInfos.emplace_back(nullptr);
-            if (dynamicRendering && depthStencilAttIndexAspects)
+            if (depthStencilAttIndexAspects)
             {
                 const auto dsInputAttOffset         = m_params.getDepthStencilInputAttOffsetDynamicRendering(i);
                 depthInputAttachmentIndices.at(i)   = dsInputAttOffset;

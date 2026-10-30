@@ -3003,8 +3003,9 @@ protected:
     tcu::DoubleFunc2 &m_func;
 };
 
+// Printed as an infix operator: (a op b).
 template <class T>
-class InfixOperator : public FloatFunc2<T>
+class InfixFunc2 : public FloatFunc2<T>
 {
 protected:
     virtual string getSymbol(void) const = 0;
@@ -3013,7 +3014,13 @@ protected:
     {
         os << "(" << *args[0] << " " << getSymbol() << " " << *args[1] << ")";
     }
+};
 
+// An infix operator with a correctly rounded result, like GLSL +, - and *.
+template <class T>
+class InfixOperator : public InfixFunc2<T>
+{
+protected:
     Interval applyPoint(const EvalContext &ctx, double x, double y) const
     {
         const double exact = this->applyExact(x, y);
@@ -3305,8 +3312,9 @@ protected:
     }
 };
 
+// Not an InfixOperator: GLSL division is accurate to 2.5 ULP, not correctly rounded.
 template <class T>
-class Div : public InfixOperator<T>
+class Div : public InfixFunc2<T>
 {
 public:
     string getName(void) const
@@ -4446,7 +4454,8 @@ public:
 
     void doPrint(ostream &os, const BaseArgExprs &args) const
     {
-        Func<Signature<T, T, T>>::doPrint(os, args);
+        // Printed as a function call, matrixCompMult(a, b), not as Mul's infix operator.
+        os << getName() << "(" << *args[0] << ", " << *args[1] << ")";
     }
 };
 

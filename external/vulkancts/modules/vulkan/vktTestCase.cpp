@@ -917,7 +917,7 @@ DefaultDevice::DefaultDevice(const PlatformInterface &vkPlatform, const tcu::Com
     , m_physicalDevice(m_contextManager->getPhysicalDevice())
     , m_deviceVersion(m_contextManager->getDeviceVersion())
     , m_usedApiVersion(m_contextManager->getUsedApiVersion())
-    , m_deviceExtensions((deviceID != DevCaps::DefDevId) ? *pDeviceExtensions : m_contextManager->getDeviceExtensions())
+    , m_deviceExtensions(pDeviceExtensions ? *pDeviceExtensions : m_contextManager->getDeviceExtensions())
     , m_deviceFeaturesPtr(m_contextManager->getDeviceFeaturesPtr())
     , m_deviceFeatures(*m_deviceFeaturesPtr)
     , m_universalQueueFamilyIndex(findComputeCapableQueueFamily(*m_instanceInterface, m_physicalDevice))

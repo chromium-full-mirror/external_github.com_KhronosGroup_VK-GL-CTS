@@ -2680,8 +2680,10 @@ TestCaseGroup *createBuiltinVarTests(TestContext &testCtx)
     builtinGroup->addChild(fragCoordMsaaInputGroup.release());
     builtinGroup->addChild(simpleGroup.release());
 
-    for (uint16_t shaderType = 0;
-         shaderType <= (SHADER_INPUT_BUILTIN_BIT | SHADER_INPUT_VARYING_BIT | SHADER_INPUT_CONSTANT_BIT); ++shaderType)
+    const ShaderInputTypes allShaderInputs =
+        SHADER_INPUT_BUILTIN_BIT | SHADER_INPUT_VARYING_BIT | SHADER_INPUT_CONSTANT_BIT;
+
+    for (ShaderInputTypes shaderType = 0; shaderType <= allShaderInputs; ++shaderType)
     {
         inputVariationsGroup->addChild(
             new BuiltinInputVariationsCase(testCtx, shaderInputTypeToString(shaderType), shaderType));
