@@ -6958,6 +6958,20 @@ struct VkPhysicalDeviceMaintenance11FeaturesKHR
 	VkBool32		maintenance11;
 };
 
+struct VkPhysicalDeviceMaintenance12FeaturesKHR
+{
+	VkStructureType	sType;
+	void*			pNext;
+	VkBool32		maintenance12;
+};
+
+struct VkPhysicalDeviceMaintenance12PropertiesKHR
+{
+	VkStructureType	sType;
+	void*			pNext;
+	uint32_t		maxInputAttachmentIndex;
+};
+
 struct VkPhysicalDeviceMaintenance3Properties
 {
 	VkStructureType	sType;

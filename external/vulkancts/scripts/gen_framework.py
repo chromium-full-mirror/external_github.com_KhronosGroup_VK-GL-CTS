@@ -202,6 +202,7 @@ VK_KHR_maintenance8
 VK_KHR_maintenance9
 VK_KHR_maintenance10
 VK_KHR_maintenance11
+VK_KHR_maintenance12
 VK_KHR_mir_surface
 VK_KHR_object_refresh
 VK_KHR_opacity_micromap

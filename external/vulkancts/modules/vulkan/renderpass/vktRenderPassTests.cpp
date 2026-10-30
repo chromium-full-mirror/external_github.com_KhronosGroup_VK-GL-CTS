@@ -55,6 +55,7 @@
 #include "vktRenderPassPerformanceCountersByRegionTests.hpp"
 #include "vktRenderPassMultiviewPerViewTests.hpp"
 #include "vktDynamicRenderingMultiviewClearTests.hpp"
+#include "vktRenderPassInputAttachmentIndicesTests.hpp"
 #endif // CTS_USES_VULKANSC
 
 #include "vktTestGroupUtil.hpp"
@@ -8917,6 +8918,7 @@ void createChildren(tcu::TestCaseGroup *group)
     group->addChild(createRenderPass2Tests(testCtx, "renderpass2"));
 #ifndef CTS_USES_VULKANSC
     group->addChild(createDynamicRenderingTests(testCtx, "dynamic_rendering"));
+    group->addChild(createRenderPassInputAttachmentIndicesTests(testCtx));
 #endif
 }
 

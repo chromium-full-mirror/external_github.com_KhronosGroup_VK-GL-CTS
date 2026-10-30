@@ -1769,6 +1769,7 @@ cc_library_static {
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassDepthStencilWriteConditionsTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassDitheringTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassFragmentDensityMapTests.cpp",
+        "external/vulkancts/modules/vulkan/renderpass/vktRenderPassInputAttachmentIndicesTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassLoadStoreOpNoneTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassLowResolutionZTests.cpp",
         "external/vulkancts/modules/vulkan/renderpass/vktRenderPassMultipleSubpassesMultipleCommandBuffersTests.cpp",

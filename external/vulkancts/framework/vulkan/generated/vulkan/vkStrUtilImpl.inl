@@ -15027,6 +15027,26 @@ std::ostream& operator<< (std::ostream& s, const VkPhysicalDeviceMaintenance11Fe
 	return s;
 }
 
+std::ostream& operator<< (std::ostream& s, const VkPhysicalDeviceMaintenance12FeaturesKHR& value)
+{
+	s << "VkPhysicalDeviceMaintenance12FeaturesKHR = {\n";
+	s << "\tsType = " << value.sType << '\n';
+	s << "\tpNext = " << value.pNext << '\n';
+	s << "\tmaintenance12 = " << value.maintenance12 << '\n';
+	s << '}';
+	return s;
+}
+
+std::ostream& operator<< (std::ostream& s, const VkPhysicalDeviceMaintenance12PropertiesKHR& value)
+{
+	s << "VkPhysicalDeviceMaintenance12PropertiesKHR = {\n";
+	s << "\tsType = " << value.sType << '\n';
+	s << "\tpNext = " << value.pNext << '\n';
+	s << "\tmaxInputAttachmentIndex = " << value.maxInputAttachmentIndex << '\n';
+	s << '}';
+	return s;
+}
+
 std::ostream& operator<< (std::ostream& s, const VkPhysicalDeviceMaintenance3Properties& value)
 {
 	s << "VkPhysicalDeviceMaintenance3Properties = {\n";
